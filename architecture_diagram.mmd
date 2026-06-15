@@ -1,0 +1,77 @@
+flowchart TD
+
+    %% 1. User Query
+    USER["Wealth Advisor"]
+    QUERY["User Query"]
+
+    %% 2. Intent Router
+    ROUTER{"Intent Router"}
+
+    %% 3. Agents / Clarify / Direct
+    AGENT1["Portfolio Insights Agent"]
+    AGENT2["Relationship Intelligence Agent"]
+    CLARIFY["Clarification"]
+    DIRECT["Direct Response"]
+
+    %% 4. Tools
+    T1["Portfolio Summary"]
+    T2["Portfolio Metrics"]
+    T3["Market Data"]
+    T4["Engagement History"]
+    T5["Vector Search"]
+    T6["Web Search"]
+
+    %% 5. LLM Call and Response
+    LLM["LLM Call"]
+    RESPONSE["Streaming Response"]
+
+    %% Hierarchy: Top to Bottom
+    USER --> QUERY
+    QUERY --> ROUTER
+
+    ROUTER -->|"Portfolio"| AGENT1
+    ROUTER -->|"Relationship"| AGENT2
+    ROUTER -->|"Ambiguous"| CLARIFY
+    ROUTER -->|"General"| DIRECT
+
+    AGENT1 --> T1
+    AGENT1 --> T2
+    AGENT1 --> T3
+    AGENT2 --> T4
+    AGENT2 --> T5
+    AGENT2 --> T6
+
+    T1 --> LLM
+    T2 --> LLM
+    T3 --> LLM
+    T4 --> LLM
+    T5 --> LLM
+    T6 --> LLM
+    CLARIFY --> LLM
+    DIRECT --> LLM
+
+    LLM --> RESPONSE
+    RESPONSE --> USER
+
+    %% Styling
+    classDef userNode fill:#1e3a5f,stroke:#60a5fa,color:#dbeafe,stroke-width:3px
+    classDef queryNode fill:#334155,stroke:#94a3b8,color:#f1f5f9,stroke-width:2px
+    classDef routerNode fill:#4c1d95,stroke:#a78bfa,color:#ede9fe,stroke-width:3px
+    classDef agentNode fill:#065f46,stroke:#34d399,color:#d1fae5,stroke-width:2px
+    classDef clarifyNode fill:#92400e,stroke:#fbbf24,color:#fef3c7,stroke-width:2px
+    classDef directNode fill:#1e40af,stroke:#93c5fd,color:#dbeafe,stroke-width:2px
+    classDef toolNode fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:2px
+    classDef llmNode fill:#581c87,stroke:#c084fc,color:#f3e8ff,stroke-width:3px
+    classDef respNode fill:#14532d,stroke:#4ade80,color:#dcfce7,stroke-width:2px
+
+    class USER userNode
+    class QUERY queryNode
+    class ROUTER routerNode
+    class AGENT1,AGENT2 agentNode
+    class CLARIFY clarifyNode
+    class DIRECT directNode
+    class T1,T2,T3,T4,T5,T6 toolNode
+    class LLM llmNode
+    class RESPONSE respNode
+    class PORTFOLIO,CRM,KB dataNode
+    class MEMORY memNode
