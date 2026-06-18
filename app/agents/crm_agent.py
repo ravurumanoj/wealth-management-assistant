@@ -14,7 +14,7 @@ from langchain_core.tools import tool
 from IPython.display import Image, display
 from pydantic import BaseModel, Field
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.store.postgres import PostgresStore
+# from langgraph.store.postgres import PostgresStore
 from mem0 import MemoryClient
 load_dotenv()
 
@@ -206,6 +206,6 @@ crm_agent_structure = crm_agent.get_graph()
 langfuse_handler = CallbackHandler()
 result = crm_agent.invoke(input={
     "is_crm": True,
-    "user_query": "What is the risk profile and recent transactions of customer 1?",
-    "customer_id": 1
+    "user_query": "Give me the overview, recent transactions and recent interactions of customer id 6?",
+    "customer_id": 6
 }, config={"callbacks": [langfuse_handler]})
