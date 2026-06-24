@@ -3,6 +3,7 @@ import json
 import logging
 import operator
 import pprint
+import os
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, List, Any, Annotated
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -11,6 +12,7 @@ from dotenv import load_dotenv
 from langfuse import get_client
 from langchain.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_google_community import GmailToolkit
 
 load_dotenv()
 
@@ -25,7 +27,7 @@ else:
     print("Authentication failed. Please check your credentials and host.")
 
 # Initialize LLM
-model = ChatGoogleGenerativeAI(model="gemini-2.5-flash",temperature=0)
+model = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite",temperature=0)
 
 mcp_client = MultiServerMCPClient(
         {
@@ -40,7 +42,13 @@ mcp_client = MultiServerMCPClient(
 async def load_crm_mcp_tools():
     return await mcp_client.get_tools()
 
-tools = asyncio.run(load_crm_mcp_tools())
+# Refer Below links to setup Gmail MCP and Toolkit
+# https://docs.langchain.com/oss/python/integrations/tools/google_gmail
+# https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server
+
+gmail_tools = GmailToolkit().get_tools()
+
+tools = asyncio.run(load_crm_mcp_tools()) + gmail_tools
 tools_by_name = {mcp_tool.name: mcp_tool for mcp_tool in tools}
 
 model_with_tools = model.bind_tools(tools)
@@ -126,7 +134,7 @@ agent = agent_builder.compile()
 langfuse_handler = CallbackHandler()
 
 async def run_demo():
-    user_query = [HumanMessage(content="Give me the overview, recent transactions and recent interactions of customer id 6?")]
+    user_query = [HumanMessage(content="Draft an email with the overview, recent transactions and recent interactions of customer id 8?")]
 
     result = await agent.ainvoke(input={
         "messages": user_query
