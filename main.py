@@ -8,6 +8,7 @@ from app.config import settings
 from app.utils.logger import logger
 from app.routes.agent import router as agent_router
 from app.routes.ui import router as ui_router
+from app.db.session import init_db, ping_db
 from datetime import datetime
 from pathlib import Path
 import sys
@@ -30,6 +31,17 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json"
     )
 
+    # Ensure the MySQL memory tables exist on startup (idempotent).
+    # The app still starts if the DB is unreachable so non-memory endpoints
+    # remain available; memory operations will log errors until it recovers.
+    @app.on_event("startup")
+    async def _init_memory_db() -> None:
+        try:
+            init_db()
+            logger.info("Memory database initialised (MySQL).")
+        except Exception as e:
+            logger.error(f"Memory database init failed: {e}")
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -38,26 +50,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Startup event
-    @app.on_event("startup")
-    async def startup_event():
-        """Execute on application startup."""
-        logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION}")
-        logger.info(f"Server running on {settings.HOST}:{settings.PORT}")
-        logger.info(f"API documentation available at http://{settings.HOST}:{settings.PORT}/api/docs")
-        
-        # Validate configuration
-        if not settings.GOOGLE_API_KEY:
-            logger.warning("GOOGLE_API_KEY not set! LLM functionality will not work.")
-        else:
-            logger.info("Google Gemini API key configured successfully")
-
-    # Shutdown event
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        """Execute on application shutdown."""
-        logger.info(f"Shutting down {settings.APP_NAME}...")
 
     # Health check endpoint
     @app.get("/health", tags=["System"], status_code=status.HTTP_200_OK)
@@ -69,6 +61,7 @@ def create_app() -> FastAPI:
         Returns:
             Detailed health status
         """
+        db_ok = ping_db()
         health_status = {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
@@ -76,7 +69,7 @@ def create_app() -> FastAPI:
             "checks": {
                 "api": "ok",
                 "llm_configured": "ok" if settings.GOOGLE_API_KEY else "warning",
-                "memory_system": "ok",
+                "memory_system": "ok" if db_ok else "error - MySQL unreachable",
                 "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
             }
         }
@@ -85,30 +78,12 @@ def create_app() -> FastAPI:
         if not settings.GOOGLE_API_KEY:
             health_status["checks"]["llm_configured"] = "warning - API key not set"
             health_status["status"] = "degraded"
+
+        # Memory DB is critical — mark unhealthy if it cannot be reached.
+        if not db_ok:
+            health_status["status"] = "degraded"
         
         return health_status
-
-    # Readiness probe (for Kubernetes/container orchestration)
-    @app.get("/ready", tags=["System"], status_code=status.HTTP_200_OK)
-    async def readiness_check():
-        """
-        Readiness probe for container orchestration.
-        
-        Returns:
-            Ready status
-        """
-        return {"ready": True}
-
-    # Liveness probe (for Kubernetes/container orchestration)
-    @app.get("/live", tags=["System"], status_code=status.HTTP_200_OK)
-    async def liveness_check():
-        """
-        Liveness probe for container orchestration.
-        
-        Returns:
-            Live status
-        """
-        return {"live": True}
 
     # Mount static assets
     static_dir = Path(__file__).resolve().parent / "app" / "static"
@@ -143,6 +118,11 @@ def run_server():
     logger.info(f"  - http://localhost:{settings.PORT}")
     logger.info(f"  - http://{settings.HOST}:{settings.PORT}")
     logger.info(f"  - http://<your-ip-address>:{settings.PORT}")
+
+    if not settings.GOOGLE_API_KEY:
+        logger.warning("GOOGLE_API_KEY not set! LLM functionality will not work.")
+    else:
+        logger.info("Google Gemini API key configured successfully")
     
     uvicorn.run(
         "main:app",

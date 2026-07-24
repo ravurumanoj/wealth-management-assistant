@@ -1,0 +1,150 @@
+{
+  "C001": {
+    "episodic": [
+      {
+        "id": "10ac6660-65c4-4275-a6ce-61e50fcae496",
+        "timestamp": "2026-06-17T18:17:41.286192+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "What is my current portfolio allocation?",
+        "answer": "### Executive Summary\nThe portfolio is currently heavily concentrated in the Financial and IT sectors, reflecting an aggressive growth stance that has successfully outperformed market expectations.\n\n### Portfolio Snapshot\n*   **Total Portfolio Value:** ₹12.50 Lakhs\n*   **Top Holdings:**\n    *   **HDFC:** ₹5.00 Lakhs (**40.0%** allocation)\n    *   **INFY:** ₹3.00 Lakhs (**24.0%** allocation)\n    *   **RELIANCE:** ₹2.50 Lakhs (**20.0%** allocation)\n    *   **TCS:** ₹2.00 Lakhs (**16.0%** allocation)\n*   **Risk Profile:** Aggressive\n\n### Analysis\nThe portfolio demonstrates a strong growth trajectory with a **YTD return of 15.5%** and a **1-year return of 18.2%**. The **Alpha of 3.2** indicates that the current selection is effectively generating excess returns over the benchmark. \n\nHowever, t",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      },
+      {
+        "id": "5b564898-7ee1-4a48-8113-c3c45e6e90e9",
+        "timestamp": "2026-06-17T18:17:51.816022+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "Should I increase my SIP given the current market situation?",
+        "answer": "### Executive Summary\nIncreasing the SIP is a prudent move to capitalize on the portfolio's strong **1.42 Sharpe Ratio**, but it should be directed toward diversifying the current 64% concentration in IT and Financials rather than doubling down on existing holdings.\n\n### Portfolio Snapshot\n*   **Total Portfolio Value:** ₹12.50 Lakhs\n*   **Current Concentration:** 100% in Large-Cap (Reliance, TCS, HDFC, INFY)\n*   **Risk Profile:** Aggressive\n*   **Key Performance Indicators:** **18.2% 1-year return** vs. **3.2 Alpha**\n\n### Analysis\nThe client’s portfolio has shown excellent momentum, with a **3-year return of 45.7%**. However, the decision to increase the SIP must be balanced against the current **Beta of 1.1**. \n*   **The Case for Increasing:** With a high **Sharpe Ratio of 1.42**, the por",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      },
+      {
+        "id": "3764a2b9-ce0d-4898-b722-fae25d95c002",
+        "timestamp": "2026-06-17T18:18:03.426600+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "What are the tax implications of redeeming my ELSS fund now?",
+        "answer": "### Executive Summary\nBased on the current portfolio data provided, there are **no ELSS (Equity Linked Savings Scheme) funds held**; therefore, there are no immediate tax implications for a redemption.\n\n### Portfolio Snapshot\n*   **Current Holdings:** RELIANCE, TCS, HDFC, INFY.\n*   **Asset Class:** 100% Direct Equity (Large-Cap).\n*   **Total Portfolio Value:** ₹12.50 Lakhs.\n\n### Analysis\n*   **Data Consistency:** The portfolio breakdown provided in the live data confirms that the client's current assets are exclusively individual equity stocks. There is no mention of ELSS or any other mutual fund units.\n*   **Tax Framework (Contextual Note):** If the client were to hold ELSS funds, the tax implications would be governed by **Long-Term Capital Gains (LTCG)** rules. Since ELSS has a mandator",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      },
+      {
+        "id": "873de43f-e208-4484-bf44-fa32260a2eb4",
+        "timestamp": "2026-06-17T18:18:15.097328+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "When was the last time I met with my relationship manager?",
+        "answer": "### Relationship Health\n**Status:** Healthy | **Satisfaction Score:** 9/10 | **Last Touchpoint:** 2024-01-15 (In-person)\n\n### Key Intelligence\n*   **Engagement Gap:** It has been over 18 months since your last in-person meeting. Given the client’s **\"in-person\" preference**, this is a significant lapse in your high-touch service model.\n*   **Strategy Shift:** The CRM notes from January 2024 indicate a specific interest in **diversifying into debt funds** to move toward a more conservative stance. However, our current portfolio data (as discussed previously) shows the client is still 100% in aggressive large-cap equities. \n*   **Risk Flag:** There is a clear misalignment between the client's stated desire for stability (debt funds) and the current portfolio reality (100% equity concentratio",
+        "intent": "relationship_intelligence",
+        "confidence": 1.0
+      },
+      {
+        "id": "110f2c5f-46c5-423a-9ed5-c9375794c9ba",
+        "timestamp": "2026-06-17T18:18:26.794087+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "Can you summarise what we discussed so far?",
+        "answer": "Certainly. We’ve covered a lot of ground regarding your client's portfolio and relationship status. Here is a summary of our discussion:\n\n### 1. Portfolio Health & Risk\n*   **Concentration:** The portfolio is currently **100% in large-cap equities** (HDFC, INFY, Reliance, TCS), with a heavy **64% concentration in IT and Financials**.\n*   **Performance:** The portfolio is performing well with an **18.2% 1-year return** and a **1.42 Sharpe Ratio**, but it carries a **Beta of 1.1**, making it more volatile than the market.\n*   **Advice:** We identified a need for rebalancing to mitigate sector-specific risk and suggested capping individual holdings at 25–30%.\n\n### 2. Strategy & SIPs\n*   **SIPs:** We agreed that increasing the SIP is a good move, provided the new capital is used to **diversify",
+        "intent": "general",
+        "confidence": 1.0
+      },
+      {
+        "id": "d0404e5a-5a24-49a9-b468-87200d6a2852",
+        "timestamp": "2026-06-17T18:26:59.124075+00:00",
+        "session_id": "ltm-diag-session",
+        "query": "What is my SIP strategy and risk profile?",
+        "answer": "### Executive Summary\nThe client maintains an **Aggressive** risk profile characterized by a high-beta strategy that has successfully generated an **alpha of 3.2%**, though the current SIP strategy lacks diversification across non-financial and non-IT sectors.\n\n### Portfolio Snapshot\n*   **Total Portfolio Value:** ₹12.5 Lakhs\n*   **Top Holdings:** \n    *   **HDFC:** ₹5.0 Lakhs (40.0% allocation)\n    *   **INFY:** ₹3.0 Lakhs (24.0% allocation)\n    *   **RELIANCE:** ₹2.5 Lakhs (20.0% allocation)\n    *   **TCS:** ₹2.0 Lakhs (16.0% allocation)\n*   **Risk Profile:** Aggressive\n*   **Key Metrics:** **1.42 Sharpe Ratio**, **12.3% Volatility**, and **1.1 Beta**.\n\n### Analysis\nThe portfolio's performance, evidenced by a **15.5% YTD return** and a strong **1.42 Sharpe Ratio**, confirms that the clie",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      },
+      {
+        "id": "4692f5ba-81ad-4c44-ac2c-b4e0adcb7db4",
+        "timestamp": "2026-06-17T18:28:16.449801+00:00",
+        "session_id": "ltm-diag-v2",
+        "query": "I want to invest more in ELSS for tax saving, my risk tolerance is moderate",
+        "answer": "### Executive Summary\nWhile the client's current portfolio is structured for aggressive growth, shifting to a moderate risk profile necessitates a strategic transition from high-beta direct equities toward tax-efficient, diversified ELSS instruments.\n\n### Portfolio Snapshot\n*   **Total Portfolio Value:** ₹12.5 Lakhs\n*   **Top Holdings:** \n    *   **HDFC:** ₹5.0 Lakhs (**40.0%** allocation)\n    *   **INFY:** ₹3.0 Lakhs (**24.0%** allocation)\n    *   **RELIANCE:** ₹2.5 Lakhs (**20.0%** allocation)\n    *   **TCS:** ₹2.0 Lakhs (**16.0%** allocation)\n*   **Risk Profile:** Aggressive (Current) vs. Moderate (Target)\n\n### Analysis\nThe current portfolio is highly concentrated in two sectors—**Financials (40.0%) and IT (40.0%)**—with a **beta of 1.1**, indicating higher volatility than the broader m",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      }
+    ],
+    "semantic": [
+      {
+        "id": "09e8c15e-c201-4e20-81dd-2359ebf2fb89",
+        "timestamp": "2026-06-17T18:28:25.718352+00:00",
+        "fact": "The client has a moderate risk tolerance and wishes to prioritize tax-saving investments through ELSS.",
+        "confidence": 0.85,
+        "source_query": "I want to invest more in ELSS for tax saving, my risk tolerance is moderate"
+      }
+    ],
+    "procedural": [
+      {
+        "id": "81dc2c49-5c11-4079-a7c0-c6dc44c41d34",
+        "timestamp": "2026-06-17T18:28:25.785347+00:00",
+        "last_seen": "2026-06-17T18:28:25.785380+00:00",
+        "pattern": "The client provides direct, goal-oriented instructions regarding their investment preferences.",
+        "frequency": 1
+      }
+    ]
+  },
+  "unknown": {
+    "episodic": [
+      {
+        "id": "4a8d4880-3950-4601-b67e-7a1fbe05c0a7",
+        "timestamp": "2026-06-18T06:21:18.583056+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "hi",
+        "answer": "Hello! It’s good to have you back. \n\nWe’ve covered quite a bit—from your client's current portfolio concentration and the need for diversification to that 18-month engagement gap we identified. \n\nHow can I help you move forward today? Would you like me to draft that re-engagement email, or perhaps run a simulation on that debt-diversification strategy we discussed?",
+        "intent": "general",
+        "confidence": 1.0
+      },
+      {
+        "id": "2434e58e-d59f-4e3f-8acd-2ca5faddc354",
+        "timestamp": "2026-06-18T06:22:31.582216+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "what is the current position of my investments",
+        "answer": "### Executive Summary\nYour client's portfolio is currently delivering strong alpha of **3.2%**, but it remains highly vulnerable to sector-specific shocks due to a lack of diversification across asset classes and industries.\n\n### Portfolio Snapshot\n*   **Total Value:** ₹12.50 Lakhs\n*   **Top Holdings:** \n    *   **HDFC:** ₹5.00 Lakhs (40.0% of portfolio)\n    *   **INFY:** ₹3.00 Lakhs (24.0% of portfolio)\n    *   **RELIANCE:** ₹2.50 Lakhs (20.0% of portfolio)\n    *   **TCS:** ₹2.00 Lakhs (16.0% of portfolio)\n*   **Risk Profile:** Aggressive (Beta: 1.1; Volatility: 12.3%)\n\n### Analysis\nThe portfolio is currently heavily reliant on two sectors: **Financials (40%)** and **IT (40%)**. This creates a significant concentration risk, as 80% of the capital is exposed to just two segments of the mar",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      },
+      {
+        "id": "698ae54c-403a-432c-8957-0420817e981e",
+        "timestamp": "2026-06-18T06:41:51.240282+00:00",
+        "session_id": "test-memory-session-001",
+        "query": "i am interested in pharma stocks wts ur thoughts on this",
+        "answer": "### Executive Summary\nAdding pharmaceutical exposure is a strategic imperative for this portfolio, as it provides the essential non-cyclical diversification required to mitigate the current **80% concentration** in IT and Financials.\n\n### Portfolio Snapshot\n*   **Total Portfolio Value:** ₹12.50 Lakhs\n*   **Current Sector Exposure:** 80% Tech & Financials, 20% Energy/Conglomerate.\n*   **Diversification Gap:** Zero exposure to Healthcare/Pharma.\n*   **Risk Profile:** Aggressive (Beta: 1.1)\n\n### Analysis\nYour intuition to pivot toward Pharma is backed by the data. The current portfolio structure is highly susceptible to macro-economic shifts affecting interest rates (Financials) and global discretionary spending (IT).\n*   **Risk Mitigation:** Integrating Pharma introduces a \"defensive\" compon",
+        "intent": "portfolio_insights",
+        "confidence": 1.0
+      }
+    ],
+    "semantic": [
+      {
+        "id": "3d674fa0-87e4-491e-9dbe-cf6feb3dde1d",
+        "timestamp": "2026-06-18T06:22:39.480711+00:00",
+        "fact": "The client's portfolio is heavily concentrated in four large-cap Indian stocks with a lack of diversification.",
+        "confidence": 0.85,
+        "source_query": "what is the current position of my investments"
+      },
+      {
+        "id": "ccf1ed33-9d1c-4f69-9d4b-cd7543f32d0e",
+        "timestamp": "2026-06-18T06:41:56.631674+00:00",
+        "fact": "The client has an aggressive risk profile and a portfolio heavily concentrated in IT and Financials with no current exposure to the pharmaceutical sector.",
+        "confidence": 0.85,
+        "source_query": "i am interested in pharma stocks wts ur thoughts on this"
+      }
+    ],
+    "procedural": [
+      {
+        "id": "23b6d96e-e94e-45ca-9826-37b23766e5bb",
+        "timestamp": "2026-06-18T06:22:39.505365+00:00",
+        "last_seen": "2026-06-18T06:22:39.505378+00:00",
+        "pattern": "The user prefers concise, data-driven portfolio status updates.",
+        "frequency": 1
+      },
+      {
+        "id": "77f1317e-d92a-4bb1-bbac-631bb6ee28a5",
+        "timestamp": "2026-06-18T06:41:56.657821+00:00",
+        "last_seen": "2026-06-18T06:41:56.657837+00:00",
+        "pattern": "The user prefers direct, informal questions and expects data-backed strategic analysis in response.",
+        "frequency": 1
+      }
+    ]
+  }
+}

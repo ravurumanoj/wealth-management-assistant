@@ -341,13 +341,87 @@
     renderSessionList();
   }
 
-  function loadSession(id) {
+  /**
+   * Fetch server-side sessions and merge any unknown ones into localStorage.
+   * Sessions already in localStorage are left untouched (local copy wins).
+   * Unknown server sessions are added as skeletons; their history is fetched
+   * lazily when the user clicks on them.
+   */
+  async function syncSessionsFromServer() {
+    try {
+      const res = await fetch(`${API_BASE}/sessions`);
+      if (!res.ok) return;
+      const serverSessions = await res.json();
+      if (!Array.isArray(serverSessions) || serverSessions.length === 0) return;
+
+      const localIds = new Set(sessions.map((s) => s.id));
+      let added = false;
+
+      for (const ss of serverSessions) {
+        const sid = ss.session_id;
+        if (!sid || localIds.has(sid)) continue;
+        if (!ss.history_count || ss.history_count === 0) continue;
+
+        const updatedAt = ss.last_updated ? new Date(ss.last_updated).getTime() : Date.now();
+        const dateLabel = ss.last_updated
+          ? new Date(ss.last_updated).toLocaleDateString()
+          : "";
+        sessions.push({
+          id: sid,
+          title: `Saved chat${dateLabel ? " · " + dateLabel : ""}`,
+          updatedAt,
+          history: [],
+          _serverSynced: true,  // flag: history must be loaded from server on first access
+        });
+        localIds.add(sid);
+        added = true;
+      }
+
+      if (added) {
+        sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+        if (sessions.length > MAX_SESSIONS) sessions = sessions.slice(0, MAX_SESSIONS);
+        persistSessions();
+        renderSessionList();
+      }
+    } catch (err) {
+      console.warn("syncSessionsFromServer: could not reach server sessions API", err);
+    }
+  }
+
+  async function loadSession(id) {
     const s = sessions.find((x) => x.id === id);
     if (!s) return;
     currentSessionId = id;
     history.length = 0;
     chatLog.innerHTML = "";
     emptyEl = null;
+
+    // Lazily fetch history from server for sessions that were not in localStorage
+    if (s._serverSynced && s.history.length === 0) {
+      try {
+        const res = await fetch(`${API_BASE}/sessions/${encodeURIComponent(id)}`);
+        if (res.ok) {
+          const data = await res.json();
+          s.history = (data.history || []).map((h) => ({
+            role: h.role,
+            content: h.content,
+          }));
+          s._serverSynced = false;
+          // Derive a meaningful title from the first user message
+          const firstUser = s.history.find((h) => h.role === "user");
+          if (firstUser) {
+            s.title = firstUser.content.length > 60
+              ? firstUser.content.slice(0, 57).trim() + "\u2026"
+              : firstUser.content;
+          }
+          pruneSessionHistory(s);
+          persistSessions();
+        }
+      } catch (err) {
+        console.warn("loadSession: failed to fetch history from server", err);
+      }
+    }
+
     s.history.forEach((h) => {
       history.push(h);
       if (h.role === "user")      appendMessage("user", h.content);
@@ -863,6 +937,10 @@
     loadClients();
     loadModelInfo();
     updatePipelineStatus("idle", null);
+
+    // Background sync: pull any server-side sessions missing from localStorage.
+    // Runs after the initial paint so it never blocks the UI.
+    syncSessionsFromServer();
   }
 
   init();

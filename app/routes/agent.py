@@ -1,18 +1,28 @@
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Path
 from fastapi.responses import StreamingResponse
 from app.schemas.agent import ChatRequest, ChatResponse, SessionInfo
 from app.utils.logger import logger
 from app.agents.orchestrator import process_chat, stream_agent
 from app.services.memory import memory_service
-from app.utils.helpers import validate_session_id, sanitize_input
 from app.config import settings
-from typing import List
+from typing import Annotated, List
 import traceback
 import json
 import os
 
 router = APIRouter(tags=["Agent"], prefix="/agent")
+
+# Path-param session IDs are validated declaratively with the same rules as ChatRequest.
+SessionIdPath = Annotated[
+    str,
+    Path(
+        min_length=1,
+        max_length=100,
+        pattern=r"^[a-zA-Z0-9_-]+$",
+        description="Unique session identifier",
+    ),
+]
 
 # ── App info endpoint (used by UI for dynamic header/badge values) ─────────────
 
@@ -34,8 +44,6 @@ async def app_info():
 )
 async def stream_chat(request: ChatRequest):
     """
-    POST /api/v1/agent/stream
-
     Streams the LangGraph agent pipeline as Server-Sent Events:
       - ``step``  events mark router/agent state transitions (running → done)
       - ``token`` events carry individual LLM output tokens for live rendering
@@ -44,28 +52,17 @@ async def stream_chat(request: ChatRequest):
 
     The client should parse each ``data: <json>`` line and render progressively.
     """
-    # Validate inputs eagerly before opening the stream
-    if not validate_session_id(request.session_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid session ID format.",
-        )
-    sanitized_message = sanitize_input(request.message)
-    if not sanitized_message:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message cannot be empty.",
-        )
 
     # Save user message to persistent memory before streaming
-    memory_service.save_chat(request.session_id, sanitized_message, "user")
+    client_id = (request.metadata or {}).get("client_id") or "unknown"
+    memory_service.save_chat(request.session_id, request.message, "user", client_id=client_id)
 
     async def event_generator():
         full_response = ""
         agent_used = "unknown"
         try:
             async for event in stream_agent(
-                sanitized_message,
+                request.message,
                 request.session_id,
                 request.metadata,
             ):
@@ -83,7 +80,7 @@ async def stream_chat(request: ChatRequest):
             if full_response:
                 try:
                     memory_service.save_chat(
-                        request.session_id, full_response, "assistant"
+                        request.session_id, full_response, "assistant", client_id=client_id
                     )
                 except Exception as mem_err:
                     logger.warning(f"Could not save assistant turn to memory: {mem_err}")
@@ -152,36 +149,25 @@ async def chat_with_agent(request: ChatRequest):
     """
     logger.info(f"Received chat request for session: {request.session_id}")
     
-    # Validate session ID
-    if not validate_session_id(request.session_id):
-        logger.warning(f"Invalid session ID format: {request.session_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid session ID format. Use alphanumeric characters, hyphens, or underscores."
-        )
-    
-    # Sanitize user input
-    sanitized_message = sanitize_input(request.message)
-    if not sanitized_message:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message cannot be empty"
-        )
-    
+    # Input validation (session ID format, message sanitization/non-empty) is
+    # enforced by the ChatRequest model before this handler runs.
     try:
         # 1. Save user message to memory
-        memory_service.save_chat(request.session_id, sanitized_message, "user")
+        client_id = (request.metadata or {}).get("client_id") or "unknown"
+        memory_service.save_chat(request.session_id, request.message, "user", client_id=client_id)
 
         # 2. Process via LangGraph Orchestrator
         result = await process_chat(
-            message=sanitized_message,
+            message=request.message,
             session_id=request.session_id,
             metadata=request.metadata
         )
         
         # 3. Save assistant response to memory
         final_response = result.get("final_output", "No response generated.")
-        memory_service.save_chat(request.session_id, final_response, "assistant")
+        memory_service.save_chat(
+            request.session_id, final_response, "assistant", client_id=client_id
+        )
 
         return ChatResponse(
             session_id=request.session_id,
@@ -217,7 +203,7 @@ async def get_sessions():
         return []
 
 @router.get("/sessions/{session_id}", status_code=status.HTTP_200_OK)
-async def get_session_history(session_id: str):
+async def get_session_history(session_id: SessionIdPath):
     """
     Get complete chat history for a specific session.
     
@@ -230,12 +216,6 @@ async def get_session_history(session_id: str):
     Raises:
         HTTPException: 404 if session not found
     """
-    if not validate_session_id(session_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid session ID format"
-        )
-    
     try:
         history = memory_service.get_history(session_id)
         if not history:
@@ -257,7 +237,7 @@ async def get_session_history(session_id: str):
         )
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_200_OK)
-async def delete_session(session_id: str):
+async def delete_session(session_id: SessionIdPath):
     """
     Delete a specific session and its history.
     
@@ -267,12 +247,6 @@ async def delete_session(session_id: str):
     Returns:
         Confirmation message
     """
-    if not validate_session_id(session_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid session ID format"
-        )
-    
     try:
         result = memory_service.delete_session(session_id)
         if result:

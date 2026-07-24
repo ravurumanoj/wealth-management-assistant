@@ -127,55 +127,6 @@ Send a message to the wealth management assistant.
 }
 ```
 
-**Example with cURL:**
-```bash
-curl -X POST "http://localhost:8000/api/v1/agent/chat" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Show me my portfolio summary",
-    "session_id": "user-123",
-    "metadata": {
-      "client_id": "CLIENT001"
-    }
-  }'
-```
-
-**Example with Python:**
-```python
-import requests
-
-url = "http://localhost:8000/api/v1/agent/chat"
-payload = {
-    "message": "What is my portfolio value?",
-    "session_id": "user-123",
-    "metadata": {
-        "client_id": "CLIENT001"
-    }
-}
-
-response = requests.post(url, json=payload)
-print(response.json())
-```
-
-**Example with JavaScript:**
-```javascript
-fetch('http://localhost:8000/api/v1/agent/chat', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    message: 'Analyze my portfolio',
-    session_id: 'user-123',
-    metadata: {
-      client_id: 'CLIENT001'
-    }
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
-```
-
 ---
 
 ### 2. List All Sessions
@@ -244,10 +195,7 @@ Retrieve complete chat history for a specific session.
 }
 ```
 
-**Example:**
-```bash
-curl "http://localhost:8000/api/v1/agent/sessions/user-123"
-```
+
 
 ---
 
@@ -264,89 +212,8 @@ Delete a session and all its history.
 }
 ```
 
-**Example:**
-```bash
-curl -X DELETE "http://localhost:8000/api/v1/agent/sessions/user-123"
-```
-
 ---
 
-## Agent Routing
-
-The orchestrator automatically routes queries to the appropriate agent based on keywords:
-
-### Portfolio Insights Agent
-
-**Triggered by keywords:**
-- portfolio, stock, market, investment, holdings, asset, equity, mutual fund, returns, performance
-
-**Example queries:**
-- "What is my portfolio value?"
-- "Show me my stock holdings"
-- "How is the market performing?"
-- "Analyze my investment returns"
-
-### Relationship Intelligence Agent
-
-**Triggered by keywords:**
-- client, meeting, engagement, relationship, satisfaction, interaction, notes, communication
-
-**Example queries:**
-- "When was my last meeting?"
-- "What is my client satisfaction score?"
-- "Show my engagement history"
-- "What were the notes from my last interaction?"
-
----
-
-## Error Responses
-
-### 400 Bad Request
-
-Invalid input or validation error.
-
-```json
-{
-  "detail": "Invalid session ID format. Use alphanumeric characters, hyphens, or underscores."
-}
-```
-
-### 404 Not Found
-
-Resource not found.
-
-```json
-{
-  "detail": "Session 'invalid-session' not found"
-}
-```
-
-### 500 Internal Server Error
-
-Server error.
-
-```json
-{
-  "detail": "An error occurred while processing your request. Please try again."
-}
-```
-
----
-
-## Session ID Guidelines
-
-- **Format**: Alphanumeric with optional hyphens and underscores
-- **Max Length**: 100 characters
-- **Valid Examples**: 
-  - `user-123`
-  - `session_abc_def`
-  - `client-001-2024`
-- **Invalid Examples**:
-  - `user@123` (contains @)
-  - `user 123` (contains space)
-  - Empty string
-
----
 
 ## Complete Workflow Example
 
@@ -387,50 +254,7 @@ curl -X DELETE "http://localhost:8000/api/v1/agent/sessions/demo-session-001"
 ---
 
 ## Interactive API Documentation
-
-Visit the following URLs for interactive API documentation:
-
 - **Swagger UI**: `http://localhost:8000/api/docs`
 - **ReDoc**: `http://localhost:8000/api/redoc`
 
-These interfaces allow you to:
-- View all endpoints
-- See request/response schemas
-- Test API calls directly from the browser
-- Download OpenAPI specification
-
 ---
-
-## Rate Limiting
-
-Currently, no rate limiting is implemented. This will be added in future versions.
-
----
-
-## Best Practices
-
-1. **Session Management**
-   - Use unique session IDs for different users/conversations
-   - Clean up old sessions periodically
-   - Include relevant metadata for better context
-
-2. **Error Handling**
-   - Always check response status codes
-   - Implement retry logic for 5xx errors
-   - Validate session IDs before sending requests
-
-3. **Performance**
-   - Keep messages concise for faster processing
-   - Use metadata to provide context instead of long messages
-   - Monitor session history size
-
-4. **Security**
-   - Sanitize user inputs before sending
-   - Don't include sensitive data in session IDs
-   - Use HTTPS in production
-
----
-
-## Support
-
-For questions or issues, check the logs at `logs/app.log` or contact the development team.

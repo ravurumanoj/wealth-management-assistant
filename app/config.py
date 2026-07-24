@@ -23,24 +23,64 @@ class Settings(BaseSettings):
 
     # Google Gemini LLM Settings
     GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    GEMINI_MODEL: str = "gemini-1.5-pro"
-    GEMINI_TEMPERATURE: float = 0.7
-    GEMINI_MAX_TOKENS: int = 8192
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+    GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", 0.7))
+    GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", 8192))
 
-    # Memory Settings
+    # Embedding model for semantic memory retrieval (vector similarity search).
+    # Must support `embedContent` for the configured API key.
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
+
+    # ── Legacy JSON Memory Settings (DISABLED — kept for reference) ──────────
+    # These paths were used by the old JSON-file memory backend. They are no
+    # longer the active storage mechanism now that memory is persisted in MySQL.
     MEMORY_STORAGE_PATH: str = "data/memory/sessions.json"
+    # Long-term memory store — episodic, semantic, and procedural records
+    # per client, persisted across all sessions.
+    LONG_TERM_MEMORY_PATH: str = "data/memory/long_term_memory.json"
+
+    # ── MySQL Memory Database Settings ──────────────────────────────────────
+    # Short-term (chat sessions/messages/summaries) AND long-term (episodic,
+    # semantic, procedural) memory are now persisted in MySQL.
+    # Override any of these via environment variables or a .env file.
+    MYSQL_HOST: str = os.getenv("MYSQL_HOST", "localhost")
+    MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", 3306))
+    MYSQL_USER: str = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
+    MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "wealth_memory")
+    # Optional: provide a full SQLAlchemy URL to override the parts above.
+    MEMORY_DATABASE_URL_OVERRIDE: Optional[str] = os.getenv("MEMORY_DATABASE_URL")
+    # Echo SQL statements to the logs (useful for debugging only).
+    DB_ECHO: bool = os.getenv("DB_ECHO", "False").lower() in ("true", "1", "t")
+
+    @property
+    def MEMORY_DATABASE_URL(self) -> str:
+        """Return the SQLAlchemy connection URL for the memory database.
+
+        Uses ``MEMORY_DATABASE_URL`` verbatim when supplied, otherwise builds a
+        ``mysql+pymysql://`` URL from the individual MYSQL_* settings.
+        """
+        if self.MEMORY_DATABASE_URL_OVERRIDE:
+            return self.MEMORY_DATABASE_URL_OVERRIDE
+        from urllib.parse import quote_plus
+        password = quote_plus(self.MYSQL_PASSWORD)
+        return (
+            f"mysql+pymysql://{self.MYSQL_USER}:{password}"
+            f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+            f"?charset=utf8mb4"
+        )
     
     # Logging Configuration
-    LOG_LEVEL: str = "INFO"
-    ENABLE_FILE_LOGGING: bool = True
-    LOG_FILE: str = "logs/app.log"
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    ENABLE_FILE_LOGGING: bool = os.getenv("ENABLE_FILE_LOGGING", "True").lower() in ("true", "1", "t")
+    LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
 
     # CORS Settings (if needed in future)
     BACKEND_CORS_ORIGINS: list = ["*"]
     
     # Agent Configuration
-    DEFAULT_AGENT_TIMEOUT: int = 30  # seconds
-    MAX_AGENT_ITERATIONS: int = 5
+    DEFAULT_AGENT_TIMEOUT: int = int(os.getenv("DEFAULT_AGENT_TIMEOUT", 60))  # seconds
+    MAX_AGENT_ITERATIONS: int = int(os.getenv("MAX_AGENT_ITERATIONS", 5))
 
     model_config = SettingsConfigDict(
         env_file=".env", 
