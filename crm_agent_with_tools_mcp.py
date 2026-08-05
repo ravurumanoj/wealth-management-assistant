@@ -40,7 +40,7 @@ mcp_client = MultiServerMCPClient(
         {
             "crm": {
                 "transport": "streamable_http",
-                "url": "http://127.0.0.1:9000/mcp",
+                "url": "http://127.0.0.1:8080/mcp",
                 "headers": {"Accept": "text/event-stream"},
             }
         }
@@ -73,8 +73,8 @@ else:
 def mcp_tool_filtering(state: CRMAgentState):
     """Filters the MCP tools semantically for the user query."""
     user_query = state["messages"][0].content
-    tool_with_score = tool_vector_store.similarity_search_with_relevance_scores(user_query, k=15)
-    print(tool_with_score)
+    # tool_with_score = tool_vector_store.similarity_search_with_relevance_scores(user_query, k=15)
+    # print(tool_with_score)
     tool_retriever = tool_vector_store.as_retriever()
     filtered_tools = [tool.metadata.get("name") for tool in tool_retriever.invoke(user_query)]
 
