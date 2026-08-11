@@ -1,20 +1,29 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import requests
+import os
 from fastapi import HTTPException
 from typing import List
+from dotenv import load_dotenv
 
+load_dotenv()
+
+API_TOKEN = os.environ.get("API_TOKEN")
+
+headers = {
+    "Authorization": f"Bearer {API_TOKEN}"
+}
 
 def get_crm_health() -> dict:
     """Checks the health of the CRM database"""
-    response = requests.get("http://localhost:8000/health")
+    response = requests.get("http://localhost:8000/health", headers=headers)
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail="Failed to retrieve CRM health information")
     return response.json()
 
 def get_customer_overview(customer_id: str) -> dict:
     """Fetches Overview of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/overview")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/overview", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -22,7 +31,7 @@ def get_customer_overview(customer_id: str) -> dict:
     
 def get_customer_interactions(customer_id: str) -> List[dict]:
     """Fetches Interactions of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/interactions")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/interactions", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -30,7 +39,7 @@ def get_customer_interactions(customer_id: str) -> List[dict]:
 
 def get_customer_portfolio(customer_id: str) -> List[dict]:
     """Fetches Portfolio of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/portfolio")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/portfolio", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -38,7 +47,7 @@ def get_customer_portfolio(customer_id: str) -> List[dict]:
 
 def get_customer_risk_analysis(customer_id: str) -> dict:
     """Fetches Risk Analysis of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/risk-analysis")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/risk-analysis", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -46,7 +55,7 @@ def get_customer_risk_analysis(customer_id: str) -> dict:
     
 def get_customer_brief(customer_id: str) -> dict:
     """Fetches Brief of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/brief")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/brief", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -54,7 +63,7 @@ def get_customer_brief(customer_id: str) -> dict:
 
 def get_customer_transactions(customer_id: str) -> List[dict]:
     """Fetches Transactions of the Customer based on given Customer ID"""
-    response = requests.get(f"http://localhost:8000/customer/{customer_id}/transactions")
+    response = requests.get(f"http://localhost:8000/customer/{customer_id}/transactions", headers=headers)
     if response.status_code == 200:
         return response.json()
     else:

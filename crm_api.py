@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
+from security import verify_token
 import os
 import sqlite3
 from typing import Any, Dict, List
@@ -35,7 +37,7 @@ def rows_to_dicts(rows) -> List[Dict[str, Any]]:
 
 
 @app.get("/health")
-def health() -> Dict[str, Any]:
+def health(user=Depends(verify_token)) -> Dict[str, Any]:
     conn = get_conn()
     try:
         tables = [
@@ -54,7 +56,7 @@ def health() -> Dict[str, Any]:
         conn.close()
 
 @app.get("/customer/{customer_id}/overview")
-def customer_overview(customer_id: int):
+def customer_overview(customer_id: int, user=Depends(verify_token)):
     conn = get_conn()
     try:
         query = """
@@ -88,7 +90,7 @@ def customer_overview(customer_id: int):
         conn.close()
 
 @app.get("/customer/{customer_id}/interactions")
-def customer_interactions(customer_id: int, limit: int = 20):
+def customer_interactions(customer_id: int, limit: int = 20, user=Depends(verify_token)):
     conn = get_conn()
     try:
         query = """
@@ -112,7 +114,7 @@ def customer_interactions(customer_id: int, limit: int = 20):
         conn.close()
 
 @app.get("/customer/{customer_id}/portfolio")
-def customer_portfolio(customer_id: int):
+def customer_portfolio(customer_id: int, user= Depends(verify_token)):
     conn = get_conn()
     try:
         query = """
@@ -135,7 +137,7 @@ def customer_portfolio(customer_id: int):
         conn.close()
 
 @app.get("/customer/{customer_id}/transactions")
-def customer_transactions(customer_id: int, limit: int = 20):
+def customer_transactions(customer_id: int, limit: int = 20, user=Depends(verify_token)):
     conn = get_conn()
     try:
         query = """
@@ -157,7 +159,7 @@ def customer_transactions(customer_id: int, limit: int = 20):
         conn.close()
 
 @app.get("/customer/{customer_id}/risk-analysis")
-def customer_risk(customer_id: int):
+def customer_risk(customer_id: int, user=Depends(verify_token)):
     conn = get_conn()
     try:
         query = """
@@ -193,7 +195,7 @@ def customer_risk(customer_id: int):
 
 
 @app.get("/customer/{customer_id}/brief")
-def customer_brief(customer_id: int):
+def customer_brief(customer_id: int, user=Depends(verify_token)):
     conn = get_conn()
     try:
         overview = conn.execute("""
