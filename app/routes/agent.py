@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, HTTPException, status, Path
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from app.schemas.agent import ChatRequest, ChatResponse, SessionInfo
 from app.utils.logger import logger
 from app.agents.orchestrator import process_chat, stream_agent
@@ -12,6 +13,11 @@ import json
 import os
 
 router = APIRouter(tags=["Agent"], prefix="/agent")
+
+
+class AddClientRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    portfolio_ids: List[str] = Field(default_factory=list)
 
 # Path-param session IDs are validated declaratively with the same rules as ChatRequest.
 SessionIdPath = Annotated[
@@ -130,6 +136,73 @@ async def list_clients():
     except Exception as e:
         logger.error(f"Error loading clients: {e}")
         return {"clients": _DEFAULT_CLIENTS}
+
+
+@router.post("/clients", tags=["Agent"], summary="Add a demo client to the client list.")
+async def add_demo_client(req: AddClientRequest):
+    """Append a custom demo client to clients.json and return the new entry."""
+    try:
+        path = os.path.abspath(_CLIENTS_FILE)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                clients = json.load(f)
+            if not isinstance(clients, list):
+                clients = []
+        else:
+            clients = list(_DEFAULT_CLIENTS)
+
+        # Generate next DEMO-XXX id
+        existing_demo = [c.get("id", "") for c in clients if str(c.get("id", "")).startswith("DEMO-")]
+        nums = [int(x.split("-")[1]) for x in existing_demo if x.split("-")[1].isdigit()]
+        next_num = max(nums, default=0) + 1
+        new_id = f"DEMO-{next_num:03d}"
+
+        new_client = {
+            "id": new_id,
+            "name": req.name.strip(),
+            "segment": "Demo",
+            "risk_profile": "moderate",
+            "relationship_manager": "Demo RM",
+            "is_custom": True,
+            "portfolio_ids": [p.strip() for p in req.portfolio_ids if p.strip()],
+        }
+        clients.append(new_client)
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(clients, f, indent=2)
+
+        logger.info(f"Demo client added: {new_id} — {req.name}")
+        return {"client": new_client}
+    except Exception as e:
+        logger.error(f"Error adding demo client: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add client.")
+
+
+@router.delete("/clients/{client_id}", tags=["Agent"], summary="Delete a demo client.")
+async def delete_demo_client(client_id: str):
+    """Remove a custom demo client from clients.json. Only is_custom clients can be deleted."""
+    try:
+        path = os.path.abspath(_CLIENTS_FILE)
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail="Client not found.")
+        with open(path, "r", encoding="utf-8") as f:
+            clients = json.load(f)
+        target = next((c for c in clients if c.get("id") == client_id), None)
+        if target is None:
+            raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found.")
+        if not target.get("is_custom"):
+            raise HTTPException(status_code=403, detail="Only custom clients can be deleted.")
+        clients = [c for c in clients if c.get("id") != client_id]
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(clients, f, indent=2)
+        logger.info(f"Demo client deleted: {client_id}")
+        return {"deleted": client_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting client {client_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete client.")
 
 # ── Non-streaming chat endpoint (kept for compatibility) ──────────────────────
 

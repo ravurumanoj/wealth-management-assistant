@@ -235,20 +235,174 @@
   });
 
   /* ================ client list ================ */
+  // Maps client id → portfolio_ids[] for demo clients
+  const clientPortfolioMap = new Map();
+  const customClientIds    = new Set();  // tracks all is_custom clients
+
   async function loadClients() {
     try {
       const res = await fetch(`${API_BASE}/clients`);
       if (!res.ok) return;
       const data = await res.json();
       const clients = data.clients || [];
+      while (clientSelect.options.length > 1) clientSelect.remove(1);
+      clientPortfolioMap.clear();
+      customClientIds.clear();
       clients.forEach((c) => {
+        const id   = typeof c === "object" ? (c.id || c.client_id || c.name) : c;
+        const name = typeof c === "object" ? (c.name || c.client_name || id) : c;
+        const isCustom = typeof c === "object" && c.is_custom === true;
+        const portfolioIds = (typeof c === "object" && Array.isArray(c.portfolio_ids)) ? c.portfolio_ids : [];
+        if (isCustom) customClientIds.add(id);
+        if (isCustom && portfolioIds.length) clientPortfolioMap.set(id, portfolioIds);
         const opt = document.createElement("option");
-        opt.value = typeof c === "object" ? (c.id || c.client_id || c.name) : c;
-        opt.textContent = typeof c === "object" ? (c.name || c.client_name || opt.value) : c;
+        opt.value = id;
+        opt.textContent = name;  // plain name, no prefix
         clientSelect.appendChild(opt);
       });
+      // Sync delete icon visibility with current selection after reload
+      showDeleteBtn(clientSelect.value);
     } catch (err) { console.warn("Could not load clients:", err); }
   }
+
+  function updatePortfolioStrip(clientId) {
+    const strip = $("portfolio-ids-strip");
+    const valueEl = $("portfolio-ids-value");
+    if (!strip || !valueEl) return;
+    const ids = clientPortfolioMap.get(clientId);
+    if (ids && ids.length) {
+      valueEl.innerHTML = "";
+      ids.forEach(pid => {
+        const chip = document.createElement("span");
+        chip.className = "portfolio-id-chip";
+        chip.textContent = pid;
+        valueEl.appendChild(chip);
+      });
+      strip.hidden = false;
+    } else {
+      strip.hidden = true;
+    }
+  }
+
+  clientSelect.addEventListener("change", () => {
+    updatePortfolioStrip(clientSelect.value);
+    showDeleteBtn(clientSelect.value);
+  });
+
+  /* ================ Add Client modal ================ */
+  const addClientModal  = $("add-client-modal");
+  const addClientForm   = $("add-client-form");
+  const btnAddClient    = $("btn-add-client");
+  const btnCloseModal   = $("btn-close-modal");
+  const btnCancelModal  = $("btn-cancel-modal");
+  const portIdInput     = $("portfolio-id-input");
+  const portIdList      = $("portfolio-id-list");
+  const btnAddPortId    = $("btn-add-port-id");
+  const btnDeleteClient = $("btn-delete-client");
+
+  let _portfolioTags = [];
+
+  function openAddClientModal() {
+    _portfolioTags = [];
+    portIdList.innerHTML = "";
+    portIdInput.value = "";
+    $("new-client-name").value = "";
+    addClientModal.hidden = false;
+    $("new-client-name").focus();
+  }
+  function closeAddClientModal() { addClientModal.hidden = true; }
+
+  btnAddClient?.addEventListener("click", openAddClientModal);
+  btnCloseModal?.addEventListener("click", closeAddClientModal);
+  btnCancelModal?.addEventListener("click", closeAddClientModal);
+  addClientModal?.addEventListener("click", (e) => { if (e.target === addClientModal) closeAddClientModal(); });
+
+  function addPortfolioTag(val) {
+    val = val.trim().toUpperCase();
+    if (!val || _portfolioTags.includes(val)) return;
+    _portfolioTags.push(val);
+    const li = document.createElement("li");
+    const span = document.createElement("span");
+    span.textContent = val;
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.textContent = "×"; rm.title = "Remove";
+    rm.addEventListener("click", () => {
+      _portfolioTags = _portfolioTags.filter(t => t !== val);
+      li.remove();
+    });
+    li.append(span, rm);
+    portIdList.appendChild(li);
+  }
+
+  btnAddPortId?.addEventListener("click", () => {
+    addPortfolioTag(portIdInput.value);
+    portIdInput.value = "";
+    portIdInput.focus();
+  });
+  portIdInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); btnAddPortId.click(); }
+  });
+
+  addClientForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("new-client-name").value.trim();
+    if (!name) return;
+    if (portIdInput.value.trim()) { addPortfolioTag(portIdInput.value); portIdInput.value = ""; }
+    const btn = $("btn-submit-client");
+    btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      const res = await fetch(`${API_BASE}/clients`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, portfolio_ids: _portfolioTags }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const c = data.client;
+      closeAddClientModal();
+      await loadClients();
+      clientSelect.value = c.id;
+      updatePortfolioStrip(c.id);
+      showDeleteBtn(c.id);
+      toast(`Client "${c.name}" added (${c.id})`, { kind: "success", title: "Client added" });
+    } catch (err) {
+      console.error(err);
+      toast("Failed to add client. Please try again.", { kind: "error", title: "Error" });
+    } finally {
+      btn.disabled = false; btn.textContent = "Add Client";
+    }
+  });
+
+  /* ================ Delete client ================ */
+  function showDeleteBtn(clientId) {
+    if (!btnDeleteClient) return;
+    const isCustom = customClientIds.has(clientId);
+    btnDeleteClient.hidden = !isCustom;
+    const badge = $("client-custom-badge");
+    if (badge) badge.hidden = !isCustom;
+  }
+
+  btnDeleteClient?.addEventListener("click", async () => {
+    const clientId = clientSelect.value;
+    if (!clientId) return;
+    const clientName = clientSelect.options[clientSelect.selectedIndex]?.textContent;
+    if (!confirm(`Delete client "${clientName}" (${clientId})? This cannot be undone.`)) return;
+    btnDeleteClient.disabled = true;
+    try {
+      const res = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientId)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      clientPortfolioMap.delete(clientId);
+      await loadClients();
+      updatePortfolioStrip("");
+      btnDeleteClient.hidden = true;
+      toast(`Client "${clientName}" deleted.`, { kind: "success", title: "Deleted" });
+    } catch (err) {
+      console.error(err);
+      toast("Failed to delete client.", { kind: "error", title: "Error" });
+    } finally {
+      btnDeleteClient.disabled = false;
+    }
+  });
 
   /* ================ app info (dynamic header values from .env) ================ */
   async function loadModelInfo() {

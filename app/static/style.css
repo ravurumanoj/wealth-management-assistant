@@ -381,6 +381,224 @@ kbd {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Portfolio ID add-row (input + Add button side by side) */
+.port-id-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+/* Added portfolio ID list inside modal */
+.portfolio-id-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.portfolio-id-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.portfolio-id-list li button {
+  background: none;
+  border: none;
+  color: var(--danger-fg);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.portfolio-id-list li button:hover { opacity: 0.7; }
+/* Client select row — select + inline delete icon */
+.client-select-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.client-select-row .client-select { flex: 1; }
+.client-delete-btn {
+  flex-shrink: 0;
+  color: var(--danger-fg);
+  opacity: 0.75;
+  padding: 4px;
+  width: 30px;
+  height: 30px;
+}
+.client-delete-btn:hover { opacity: 1; }
+.client-delete-btn svg { width: 15px; height: 15px; }
+.portfolio-ids-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+.portfolio-ids-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-600);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+.portfolio-ids-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.portfolio-id-chip {
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--brand-600);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-feature-settings: "tnum";
+}
+/* Custom client badge — shown in card header when a custom client is selected */
+.badge-custom {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-600);
+  background: var(--brand-100);
+  border: 1px solid var(--brand-500);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+[data-theme="dark"] .badge-custom {
+  background: rgba(99,102,241,0.18);
+  color: #a78bfa;
+  border-color: #7c3aed;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 420px;
+  margin: 16px;
+  overflow: hidden;
+  animation: slideUp 0.18s ease;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+.modal-form { padding: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--brand-500); box-shadow: var(--ring); }
+.form-hint { font-size: 11px; color: var(--text-subtle); margin-top: 5px; }
+.form-hint kbd {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+/* Tag input */
+.tag-input-wrap {
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  cursor: text;
+  transition: border-color 0.15s;
+}
+.tag-input-wrap:focus-within { border-color: var(--brand-500); box-shadow: var(--ring); }
+.portfolio-tags { display: contents; }
+.port-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--brand-600);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+.port-tag:hover { background: var(--brand-700); }
+.port-tag-x { font-size: 14px; line-height: 1; opacity: 0.8; }
+.tag-input {
+  border: none; outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  flex: 1;
+  min-width: 120px;
+  padding: 2px 0;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes slideUp { from { transform:translateY(12px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
 /* Dropzone */
 .dropzone {
   display: flex;
