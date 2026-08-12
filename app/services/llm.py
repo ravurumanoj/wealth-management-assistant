@@ -29,15 +29,22 @@ class _UniqueAILLM:
 
     def __init__(self, bound_tools: Optional[list] = None) -> None:
         self._bound_tools = bound_tools or []
-        # Configure SDK once at creation time
         unique_sdk.api_key = settings.UNIQUE_APP_KEY
         unique_sdk.app_id = settings.UNIQUE_APP_ID
         if settings.UNIQUE_API_BASE_URL:
             unique_sdk.api_base = settings.UNIQUE_API_BASE_URL
-        # Use corporate CA cert bundle if provided; otherwise default SSL verification
+
+        # SSL: use CA cert path > SSL_VERIFY flag > default True
         if settings.SSL_CA_CERT_PATH:
             unique_sdk.api_verify_mode = settings.SSL_CA_CERT_PATH
+            # Also set for requests/httpx used elsewhere
+            import os
+            os.environ["REQUESTS_CA_BUNDLE"] = settings.SSL_CA_CERT_PATH
+            os.environ["SSL_CERT_FILE"] = settings.SSL_CA_CERT_PATH
             logger.info(f"Unique AI: using CA cert: {settings.SSL_CA_CERT_PATH}")
+        elif not settings.SSL_VERIFY:
+            unique_sdk.api_verify_mode = False
+            logger.warning("Unique AI: SSL verification DISABLED — do not use in production")
         else:
             unique_sdk.api_verify_mode = True
 

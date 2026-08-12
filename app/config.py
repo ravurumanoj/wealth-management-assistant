@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     UNIQUE_USER_ID: str = ""
     # Path to corporate CA certificate bundle (.pem/.crt) — set when SSL errors occur
     SSL_CA_CERT_PATH: str = ""
+    # Set to False to disable SSL verification (use only for local testing, not production)
+    SSL_VERIFY: bool = True
 
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
 
