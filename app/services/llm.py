@@ -34,6 +34,12 @@ class _UniqueAILLM:
         unique_sdk.app_id = settings.UNIQUE_APP_ID
         if settings.UNIQUE_API_BASE_URL:
             unique_sdk.api_base = settings.UNIQUE_API_BASE_URL
+        # Use corporate CA cert bundle if provided; otherwise default SSL verification
+        if settings.SSL_CA_CERT_PATH:
+            unique_sdk.api_verify_mode = settings.SSL_CA_CERT_PATH
+            logger.info(f"Unique AI: using CA cert: {settings.SSL_CA_CERT_PATH}")
+        else:
+            unique_sdk.api_verify_mode = True
 
     # ── message conversion ────────────────────────────────────────────────────
 
