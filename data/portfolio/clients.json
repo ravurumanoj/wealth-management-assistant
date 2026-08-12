@@ -1,1 +1,44 @@
-{}
+[
+  {
+    "id": "CUST-1001",
+    "name": "Rajesh Kumar",
+    "segment": "HNI",
+    "risk_profile": "moderate",
+    "relationship_manager": "Asha Patel"
+  },
+  {
+    "id": "CUST-1002",
+    "name": "Priya Mehta",
+    "segment": "HNI",
+    "risk_profile": "moderate_aggressive",
+    "relationship_manager": "Asha Patel"
+  },
+  {
+    "id": "CUST-2002",
+    "name": "Priya Sharma",
+    "segment": "Affluent",
+    "risk_profile": "conservative",
+    "relationship_manager": "Rahul Nair"
+  },
+  {
+    "id": "CUST-3003",
+    "name": "Ananya Reddy",
+    "segment": "Ultra-HNI",
+    "risk_profile": "aggressive",
+    "relationship_manager": "Vikram Singh"
+  },
+  {
+    "id": "CUST-4004",
+    "name": "Arjun Mehta",
+    "segment": "Mass Affluent",
+    "risk_profile": "moderate_aggressive",
+    "relationship_manager": "Meena Iyer"
+  },
+  {
+    "id": "CUST-5005",
+    "name": "Kavita Nambiar",
+    "segment": "HNI",
+    "risk_profile": "moderate",
+    "relationship_manager": "Deepak Joshi"
+  }
+]

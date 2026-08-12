@@ -34,7 +34,8 @@ from app.db.models import (
     SemanticMemory,
 )
 from app.db.session import session_scope
-from app.services import embeddings
+# LTM_DISABLED — embeddings disabled; uncomment when available
+# from app.services import embeddings
 from app.utils.logger import logger
 
 # ── per-client caps (mirror the previous JSON backend) ──────────────────────────
@@ -72,7 +73,9 @@ def add_episodic(
 ) -> None:
     """Insert one Q&A episode and evict episodes beyond the per-client cap."""
     try:
-        embedding_blob = embeddings.encode_embedding(embeddings.embed_text(query))
+        # LTM_DISABLED — embedding generation skipped
+        # embedding_blob = embeddings.encode_embedding(embeddings.embed_text(query))
+        embedding_blob = None
         with session_scope() as db:
             db.add(
                 EpisodicMemory(
@@ -141,14 +144,15 @@ def search_episodic(client_id: str, query: str, limit: int = 3) -> List[Dict[str
             for r in rows
         ]
 
-        # ── 1. Semantic ranking via a temporary in-memory index ──────────────
-        query_vec = embeddings.embed_text(query) if query else None
-        if query_vec is not None:
-            candidates = [embeddings.decode_embedding(e["_embedding"]) for e in episodes]
-            scores = embeddings.cosine_rank(query_vec, candidates)
-            if any(s > 0 for s in scores):
-                ranked = sorted(zip(scores, episodes), key=lambda t: t[0], reverse=True)
-                return [_strip_internal(ep) for score, ep in ranked[:limit] if score > 0]
+        # LTM_DISABLED — semantic ranking via embedding skipped; keyword fallback always used
+        # query_vec = embeddings.embed_text(query) if query else None
+        # if query_vec is not None:
+        #     candidates = [embeddings.decode_embedding(e["_embedding"]) for e in episodes]
+        #     scores = embeddings.cosine_rank(query_vec, candidates)
+        #     if any(s > 0 for s in scores):
+        #         ranked = sorted(zip(scores, episodes), key=lambda t: t[0], reverse=True)
+        #         return [_strip_internal(ep) for score, ep in ranked[:limit] if score > 0]
+        query_vec = None  # LTM_DISABLED
 
         # ── 2. Keyword overlap fallback ──────────────────────────────────────
         query_words = set(query.lower().split())
@@ -199,8 +203,11 @@ def add_semantic_fact(
     if not fact:
         return
     fact_hash = _hash(fact)
-    new_vec = embeddings.embed_text(fact)
-    embedding_blob = embeddings.encode_embedding(new_vec)
+    # LTM_DISABLED — embedding generation and semantic merge skipped
+    # new_vec = embeddings.embed_text(fact)
+    # embedding_blob = embeddings.encode_embedding(new_vec)
+    new_vec = None
+    embedding_blob = None
     try:
         with session_scope() as db:
             # 1. exact duplicate
@@ -214,30 +221,12 @@ def add_semantic_fact(
                 return  # deduplicate
 
             # 2. semantic near-duplicate → update in place
-            if new_vec is not None:
-                rows = db.execute(
-                    select(SemanticMemory)
-                    .where(SemanticMemory.client_id == client_id)
-                    .order_by(SemanticMemory.created_at.desc())
-                    .limit(_MAX_SEMANTIC)
-                ).scalars().all()
-                if rows:
-                    candidates = [embeddings.decode_embedding(r.embedding) for r in rows]
-                    scores = embeddings.cosine_rank(new_vec, candidates)
-                    best_i = max(range(len(scores)), key=lambda i: scores[i])
-                    if scores[best_i] >= _SEMANTIC_MERGE_THRESHOLD:
-                        target = rows[best_i]
-                        target.fact = fact
-                        target.fact_hash = fact_hash
-                        target.embedding = embedding_blob
-                        target.confidence = round(confidence, 3)
-                        target.source_query = source_query[:300]
-                        target.created_at = _now()
-                        logger.debug(
-                            f"long_term_repo: semantic merged client={client_id} "
-                            f"(sim={scores[best_i]:.2f})"
-                        )
-                        return
+            # LTM_DISABLED — cosine dedup skipped; exact hash dedup above still active
+            # if new_vec is not None:
+            #     rows = db.execute(...).scalars().all()
+            #     candidates = [embeddings.decode_embedding(r.embedding) for r in rows]
+            #     scores = embeddings.cosine_rank(new_vec, candidates)
+            #     if scores[best_i] >= _SEMANTIC_MERGE_THRESHOLD: ... return
 
             # 3. insert new
             db.add(
@@ -298,46 +287,12 @@ def recent_semantic(client_id: str, limit: int = 15) -> List[Dict[str, Any]]:
 
 
 def search_semantic(client_id: str, query: str, limit: int = 15) -> List[Dict[str, Any]]:
-    """Return the most-relevant semantic facts for *query*.
-
-    Embeds the query and cosine-ranks it against a temporary index built from
-    the client's stored fact embeddings. Falls back to ``recent_semantic`` when
-    embeddings are unavailable or nothing scores above zero, so callers always
-    get the most useful facts the system can offer.
-    """
-    query_vec = embeddings.embed_text(query) if query else None
-    if query_vec is None:
-        return recent_semantic(client_id, limit=limit)
-    try:
-        with session_scope() as db:
-            rows = db.execute(
-                select(SemanticMemory)
-                .where(SemanticMemory.client_id == client_id)
-                .order_by(SemanticMemory.created_at.desc(), SemanticMemory.id.desc())
-                .limit(_MAX_SEMANTIC)
-            ).scalars().all()
-        if not rows:
-            return []
-        facts = [
-            {
-                "id": r.id,
-                "timestamp": r.created_at.isoformat() if r.created_at else "",
-                "fact": r.fact,
-                "confidence": float(r.confidence) if r.confidence is not None else 0.85,
-                "source_query": r.source_query,
-                "_embedding": r.embedding,
-            }
-            for r in rows
-        ]
-        candidates = [embeddings.decode_embedding(f["_embedding"]) for f in facts]
-        scores = embeddings.cosine_rank(query_vec, candidates)
-        if not any(s > 0 for s in scores):
-            return recent_semantic(client_id, limit=limit)
-        ranked = sorted(zip(scores, facts), key=lambda t: t[0], reverse=True)
-        return [_strip_internal(f) for score, f in ranked[:limit] if score > 0]
-    except Exception as e:
-        logger.warning(f"long_term_repo.search_semantic error: {e}")
-        return recent_semantic(client_id, limit=limit)
+    """Return the most-relevant semantic facts for *query*."""
+    # LTM_DISABLED — vector search skipped; falls back to most-recent facts
+    # Uncomment the full implementation below when embeddings are available
+    # query_vec = embeddings.embed_text(query) if query else None
+    # ...
+    return recent_semantic(client_id, limit=limit)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -102,13 +102,14 @@ _CLIENTS_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "portfolio", "clients.json"
 )
 
-# Default sample clients shown when the JSON file is empty or missing
+# Default fallback — matches the 6 customers in data/crm.json and data/portfolio.json
 _DEFAULT_CLIENTS = [
-    {"id": "C001", "name": "Arjun Mehta"},
-    {"id": "C002", "name": "Priya Sharma"},
-    {"id": "C003", "name": "Vikram Nair"},
-    {"id": "C004", "name": "Anjali Reddy"},
-    {"id": "C005", "name": "Rohit Kapoor"},
+    {"id": "CUST-1001", "name": "Rajesh Kumar", "segment": "HNI"},
+    {"id": "CUST-1002", "name": "Priya Mehta", "segment": "HNI"},
+    {"id": "CUST-2002", "name": "Priya Sharma", "segment": "Affluent"},
+    {"id": "CUST-3003", "name": "Ananya Reddy", "segment": "Ultra-HNI"},
+    {"id": "CUST-4004", "name": "Arjun Mehta", "segment": "Mass Affluent"},
+    {"id": "CUST-5005", "name": "Kavita Nambiar", "segment": "HNI"},
 ]
 
 

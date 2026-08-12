@@ -73,9 +73,7 @@ def init_db() -> None:
     """
     Base.metadata.create_all(bind=engine)
     _ensure_columns()
-    logger.info("init_db: memory tables ensured (chat_sessions, chat_messages, "
-                "episodic_memory, semantic_memory, procedural_memory, "
-                "client_preferences)")
+    logger.info("init_db: memory tables ensured (PostgreSQL)")
 
 
 def _ensure_columns() -> None:
@@ -99,7 +97,9 @@ def _ensure_columns() -> None:
             if column in cols:
                 continue
             with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} TEXT"))
+                # PostgreSQL supports ADD COLUMN IF NOT EXISTS (pg 9.6+)
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} TEXT"))
+                # MYSQL_DISABLED — was: ALTER TABLE {table} ADD COLUMN {column} TEXT
             logger.info(f"_ensure_columns: added {table}.{column}")
     except Exception as e:  # pragma: no cover - depends on live DB
         logger.warning(f"_ensure_columns: migration skipped ({type(e).__name__}: {e})")

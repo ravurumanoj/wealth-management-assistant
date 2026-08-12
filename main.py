@@ -8,6 +8,8 @@ from app.config import settings
 from app.utils.logger import logger
 from app.routes.agent import router as agent_router
 from app.routes.ui import router as ui_router
+from app.routes.portfolio import router as portfolio_router
+from app.routes.crm import router as crm_router
 from app.db.session import init_db, ping_db
 from datetime import datetime
 from pathlib import Path
@@ -26,9 +28,9 @@ def create_app() -> FastAPI:
         description=settings.DESCRIPTION,
         version=settings.VERSION,
         debug=settings.DEBUG,
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json"
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json"
     )
 
     # Ensure the MySQL memory tables exist on startup (idempotent).
@@ -38,7 +40,7 @@ def create_app() -> FastAPI:
     async def _init_memory_db() -> None:
         try:
             init_db()
-            logger.info("Memory database initialised (MySQL).")
+            logger.info("Memory database initialised (PostgreSQL).")
         except Exception as e:
             logger.error(f"Memory database init failed: {e}")
 
@@ -68,15 +70,14 @@ def create_app() -> FastAPI:
             "version": settings.VERSION,
             "checks": {
                 "api": "ok",
-                "llm_configured": "ok" if settings.GOOGLE_API_KEY else "warning",
-                "memory_system": "ok" if db_ok else "error - MySQL unreachable",
+                "llm_configured": "ok" if settings.UNIQUE_APP_KEY else "warning",
+                "memory_system": "ok" if db_ok else "error - PostgreSQL unreachable",
                 "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
             }
         }
         
-        # Return warning status if LLM not configured
-        if not settings.GOOGLE_API_KEY:
-            health_status["checks"]["llm_configured"] = "warning - API key not set"
+        if not settings.UNIQUE_APP_KEY:
+            health_status["checks"]["llm_configured"] = "warning - UNIQUE_APP_KEY not set"
             health_status["status"] = "degraded"
 
         # Memory DB is critical — mark unhealthy if it cannot be reached.
@@ -91,6 +92,8 @@ def create_app() -> FastAPI:
 
     # Include API routers
     app.include_router(agent_router, prefix=settings.API_V1_STR)
+    app.include_router(portfolio_router, prefix=settings.API_V1_STR)
+    app.include_router(crm_router, prefix=settings.API_V1_STR)
     app.include_router(ui_router)  # Serves the chat UI at "/"
 
     # Global exception handler
@@ -119,10 +122,10 @@ def run_server():
     logger.info(f"  - http://{settings.HOST}:{settings.PORT}")
     logger.info(f"  - http://<your-ip-address>:{settings.PORT}")
 
-    if not settings.GOOGLE_API_KEY:
-        logger.warning("GOOGLE_API_KEY not set! LLM functionality will not work.")
+    if not settings.UNIQUE_APP_KEY:
+        logger.warning("UNIQUE_APP_KEY not set! LLM functionality will not work.")
     else:
-        logger.info("Google Gemini API key configured successfully")
+        logger.info(f"Unique AI configured: {settings.UNIQUE_MODEL_NAME}")
     
     uvicorn.run(
         "main:app",

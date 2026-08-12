@@ -64,27 +64,15 @@
         </div>
       </section>
 
-      <!-- Agent status -->
-      <section class="card status-card" aria-label="Agent pipeline status">
+      <!-- Activity log -->
+      <section class="card activity-card" aria-label="Live activity log">
         <header class="card-header">
-          <span class="card-title">Agent Pipeline</span>
-          <span class="status-dot is-ready" id="status-dot" aria-hidden="true"></span>
+          <span class="card-title">Activity Log</span>
+          <span class="activity-live" id="activity-live" aria-hidden="true"></span>
         </header>
-        <div class="status-grid status-grid-3">
-          <div class="status-item">
-            <span class="status-label">Router</span>
-            <span class="status-value" id="agent-router-status">ready</span>
-          </div>
-          <div class="status-item">
-            <span class="status-label">Portfolio</span>
-            <span class="status-value" id="agent-portfolio-status">ready</span>
-          </div>
-          <div class="status-item">
-            <span class="status-label">CRM</span>
-            <span class="status-value" id="agent-crm-status">ready</span>
-          </div>
-        </div>
-        <div class="status-meta" id="status-meta">LangGraph multi-agent pipeline</div>
+        <ul id="activity-log" class="activity-log" aria-live="polite" aria-label="Agent activity">
+          <li class="activity-empty">Activity appears here when you send a message.</li>
+        </ul>
       </section>
 
       <footer class="sidebar-footer">

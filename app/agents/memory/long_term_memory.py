@@ -35,9 +35,11 @@ from pydantic import BaseModel, Field
 
 from app.utils.logger import logger
 from app.repositories import long_term_repo
+from app.constants import CTX_EPISODIC_LIMIT, CTX_SEMANTIC_LIMIT, CTX_PROCEDURAL_LIMIT
+from app.prompts.memory import MEMORY_EXTRACTION_PROMPT
 
-# ── context limits ──────────────────────────────────────────────────────────────
-_CTX_EPISODIC: int = 3     # max recent episodes injected per prompt
+# ── context limits (imported from constants) ──────────────────────────────────
+_CTX_EPISODIC = CTX_EPISODIC_LIMIT
 
 # ── type aliases ──────────────────────────────────────────────────────────────
 EpisodicEntry = Dict[str, Any]
@@ -223,69 +225,10 @@ def search_episodic(
 # ══════════════════════════════════════════════════════════════════════════════
 
 def format_long_term_context(client_id: str, query: str) -> Optional[str]:
-    """Build a concise context block from all memory types for *client_id*.
-
-    The returned string is injected as the first ``SystemMessage`` in every
-    LLM call (portfolio, CRM, general, clarification) so agents ground
-    responses in durable client knowledge.
-
-    Sections included:
-        - **CLIENT PREFERENCES**: structured key→value preferences.
-        - **PAST INTERACTIONS (episodic)**: up to 3 most-relevant prior Q&A.
-        - **CLIENT PROFILE (semantic)**: last 15 extracted facts.
-        - **COMMUNICATION PATTERNS (procedural)**: top 10 patterns by frequency.
-
-    Returns ``None`` when the client has no stored memory yet (first session),
-    which means no ``SystemMessage`` overhead is added.
-
-    Args:
-        client_id: Client identifier (use ``"unknown"`` for unidentified).
-        query:     Current user query (drives episodic relevance ranking).
-    """
-    cs = load_client_memory(client_id)
-    parts: List[str] = []
-
-    # Preferences section (most actionable — surfaced first)
-    prefs: List[Dict[str, Any]] = cs.get("preferences", [])
-    if prefs:
-        lines = [
-            f"  - {p.get('key', '')}: {p.get('value', '')}" for p in prefs
-        ]
-        parts.append("CLIENT PREFERENCES:\n" + "\n".join(lines))
-
-    # Episodic section
-    episodes = search_episodic(client_id, query)
-    if episodes:
-        lines: List[str] = []
-        for ep in episodes:
-            ts = ep.get("timestamp", "")[:10]
-            lines.append(f"  [{ts}] Q: {ep.get('query', '')[:120]}")
-            lines.append(f"         A: {ep.get('answer', '')[:200]}")
-        parts.append("PAST INTERACTIONS (episodic):\n" + "\n".join(lines))
-
-    # Semantic section — ranked by relevance to the current query (vector search
-    # with graceful fallback to most-recent facts).
-    facts: List[SemanticFact] = long_term_repo.search_semantic(client_id, query, limit=15)
-    if facts:
-        lines = [f"  - {f['fact']}" for f in facts]
-        parts.append("CLIENT PROFILE (semantic):\n" + "\n".join(lines))
-
-    # Procedural section
-    procs = sorted(
-        cs.get("procedural", []),
-        key=lambda x: x.get("frequency", 1),
-        reverse=True,
-    )
-    if procs:
-        lines = [
-            f"  - {p['pattern']} (x{p.get('frequency', 1)})" for p in procs[:10]
-        ]
-        parts.append("COMMUNICATION PATTERNS (procedural):\n" + "\n".join(lines))
-
-    if not parts:
-        return None
-    header = f"[Long-term memory for client {client_id!r}]"
-    return header + "\n" + "\n\n".join(parts)
+    """Build a concise context block from all memory types for *client_id*."""
+    # LTM_DISABLED — embeddings not available on this machine.
+    # Remove this return to re-enable long-term memory context injection.
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -331,19 +274,7 @@ class MemoryExtraction(BaseModel):
     )
 
 
-_EXTRACTION_INSTRUCTIONS = (
-    "You are a memory extractor for a wealth-management AI assistant.\n"
-    "From the single Q&A turn below, extract only durable, client-specific "
-    "information worth remembering across future sessions.\n"
-    "- semantic_facts: durable facts (goals, financial situation, life events, "
-    "constraints).\n"
-    "- procedural_patterns: how the client likes to communicate (format, detail, "
-    "recurring topics).\n"
-    "- preferences: stable key=value settings (e.g. risk_tolerance=moderate, "
-    "preferred_channel=email, sector_interest=pharma).\n"
-    "Return EMPTY lists when the turn is small talk, a greeting, or contains "
-    "nothing durable. Never invent information that is not supported by the turn."
-)
+_EXTRACTION_INSTRUCTIONS = MEMORY_EXTRACTION_PROMPT  # alias for backward compat within module
 
 
 def _heuristic_extract(query: str, answer: str) -> MemoryExtraction:
@@ -455,70 +386,10 @@ def save_turn_facts(
     answer: str,
     intent: str,
 ) -> None:
-    """Save all long-term memory artifacts for one completed Q&A turn.
-
-    Called by ``stream_agent`` in ``orchestrator.py`` *after* the full
-    response has been streamed to the user.
-
-    Steps:
-        1. **Episodic**: Always appended — raw Q&A record for later recall.
-        2. **Semantic / Procedural / Preference**: an LLM structured-output
-           extractor decides what (if anything) is worth remembering. The model
-           — not hardcoded intent rules — gates what gets stored, returning
-           empty lists for small talk.
-
-    All steps fail silently so a memory error never corrupts a delivered
-    response.
-
-    Args:
-        client_id:  Client identifier (``"unknown"`` for unidentified).
-        session_id: Session ID for this conversation.
-        query:      The original user question.
-        answer:     The final answer delivered to the user.
-        intent:     Resolved agent intent (kept for the episodic record only).
-    """
-    if not client_id or client_id == "unknown":
-        client_id = "unknown"
-
-    logger.info(
-        f"long_term_memory: save_turn_facts called "
-        f"client={client_id} intent={intent} session={session_id[:12]}"
-    )
-
-    # Step 1 — episodic (always runs, never raises)
-    try:
-        save_episodic(client_id, session_id, query, answer, intent)
-    except Exception as e:
-        logger.warning(f"long_term_memory: episodic save failed ({e}) (non-fatal)")
-
-    # Step 2 — LLM-driven structured extraction (no hardcoded intent gating).
-    # The extractor returns empty lists for trivial turns, so nothing is stored.
-    if not query.strip() or not answer.strip():
-        return
-    try:
-        extraction = _extract_memory(query, answer)
-        for fact in extraction.semantic_facts:
-            if fact and fact.strip():
-                save_semantic_fact(client_id, fact.strip(), source_query=query)
-        for pattern in extraction.procedural_patterns:
-            if pattern and pattern.strip():
-                save_procedural_pattern(client_id, pattern.strip())
-        for pref in extraction.preferences:
-            key = (pref.key or "").strip()
-            value = (pref.value or "").strip()
-            if key and value:
-                category = pref.category or _categorize_preference(key)
-                save_preference(
-                    client_id,
-                    pref_key=key,
-                    pref_value=value,
-                    category=category,
-                    source="inferred",
-                )
-    except Exception as e:
-        logger.warning(
-            f"long_term_memory: structured extraction/save failed ({e}) (non-fatal)"
-        )
+    """Save all long-term memory artifacts for one completed Q&A turn."""
+    # LTM_DISABLED — embeddings not available on this machine.
+    # Remove this return to re-enable episodic/semantic/procedural saving.
+    return
 
 
 

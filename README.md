@@ -8,7 +8,8 @@ An intelligent **Agentic RAG** system powered by **LangGraph** and **Google Gemi
 - **4-Way Intent Classification**: Routes queries to Portfolio Insights, Relationship Intelligence, General conversation, or Clarification
 - **Real-Time Streaming (SSE)**: Server-Sent Events endpoint for token-by-token response rendering
 - **Portfolio Insights Agent**: Analyzes portfolios, calculates metrics, provides data-backed recommendations in Indian notation (₹, lakhs/crores)
-- **Relationship Intelligence Agent**: Tracks client engagement, sentiment, and CRM data
+- **Relationship Intelligence Agent (CRM)**: Tracks client engagement, sentiment, and CRM data using **LLM-driven tool calling** (the model decides which tool to call, the agent executes it, and feeds the result back)
+- **MCP Integration**: The CRM agent connects to a local **MCP (Model Context Protocol)** server over the streamable-http transport, discovers its tools at runtime, and falls back to a built-in tool when the server is unavailable
 - **General & Clarification Agents**: Handles broad queries and asks focused follow-up questions when intent is ambiguous
 - **Conversation Memory**: JSON-based session storage with multi-turn history injection
 - **Chat UI**: Built-in HTML/CSS/JS chat interface with cache-busted assets
@@ -53,8 +54,7 @@ wealth_management_assistant/
 │   ├── schemas/
 │   │   └── agent.py         # ChatRequest, ChatResponse, SessionInfo Pydantic models
 │   ├── services/
-│   │   ├── llm.py           # Google Gemini LLM initialization
-│   │   ├── memory.py        # JSONMemoryService (session persistence)
+│   │   ├── llm.py           # Google Gemini LLM initialization│   │   ├── mcp_client.py     # MCP client: connects to the local CRM MCP server, discovers tools│   │   ├── memory.py        # JSONMemoryService (session persistence)
 │   │   ├── tools.py         # LangChain @tool definitions (portfolio, CRM, metrics, market)
 │   │   └── ingestion.py     # Ingestion service (placeholder)
 │   ├── static/              # app.js, style.css
@@ -204,7 +204,29 @@ The LangGraph orchestrator classifies every user message into one of four intent
 | `get_portfolio_summary` | Fetch portfolio holdings and valuations | Portfolio Insights |
 | `calculate_portfolio_metrics` | Calculate returns, volatility, Sharpe ratio, alpha/beta | Portfolio Insights |
 | `get_market_data` | Fetch current market prices for a symbol | Portfolio Insights |
-| `get_client_engagement_history` | Fetch CRM meeting notes, sentiment, interactions | Relationship Intelligence |
+| `get_client_engagement_history` | Fetch CRM meeting notes, sentiment, interactions | Relationship Intelligence (fallback tool) |
+| _MCP-discovered tools_ | Whatever the local CRM MCP server exposes (discovered dynamically at runtime) | Relationship Intelligence (preferred) |
+
+### 🔌 MCP Integration & Tool Calling (CRM agent)
+
+The **Relationship Intelligence (CRM) agent** uses true, LLM-driven tool calling:
+
+1. Tools are **bound to the LLM** (`bind_tools`). The model decides whether to call a tool.
+2. The agent **executes** the requested tool call(s) and appends the result as a `ToolMessage`.
+3. The model is re-invoked with the tool results and produces the final grounded answer.
+4. In the **streaming path**, tool rounds are silent; once the model streams answer content, tokens are yielded to the client (no wasted generation). A safety cap (`MCP_MAX_TOOL_ITERATIONS`) prevents infinite loops.
+
+**Tool source & graceful fallback** — handled by `app/services/mcp_client.py`:
+
+| Scenario | Behavior |
+|----------|----------|
+| MCP disabled or `MCP_CRM_SERVER_URL` not set | Falls back to the built-in `get_client_engagement_history` tool |
+| `langchain-mcp-adapters` not installed | Logs a warning, falls back to the built-in tool |
+| MCP server unreachable / times out / errors | Falls back to the built-in tool |
+| MCP server reachable | Discovers its tools via `list_tools()` and lets the LLM call them |
+
+> **Scope note:** Only the CRM agent was switched to tool calling. Portfolio, General, Clarification, and Router agents are unchanged.
+> **Install:** MCP support requires `langchain-mcp-adapters` and `mcp` (already in `pyproject.toml`). Run `uv sync` (or `pip install -e .`) to install them, then set `MCP_CRM_SERVER_URL`.
 
 ## 📝 Configuration
 
@@ -226,6 +248,14 @@ GEMINI_MAX_TOKENS=8192
 
 # Memory
 MEMORY_STORAGE_PATH="data/memory/sessions.json"
+
+# MCP (Model Context Protocol) — used by the CRM / Relationship agent.
+# Leave MCP_CRM_SERVER_URL unset to use the built-in fallback tool.
+MCP_ENABLED=True
+MCP_CRM_SERVER_URL="http://localhost:8002/mcp"   # your local MCP server (streamable-http)
+MCP_TRANSPORT="streamable_http"
+MCP_TIMEOUT=15                                     # seconds before falling back
+MCP_MAX_TOOL_ITERATIONS=5                          # cap on tool-call rounds per turn
 
 # Agent
 DEFAULT_AGENT_TIMEOUT=30
@@ -253,6 +283,14 @@ LOG_FILE="logs/app.log"
 1. Define tool in `app/services/tools.py` using `@tool` decorator
 2. Import and invoke from the relevant agent module under `app/agents/`
 3. Update agent prompts to reference the new tool capability
+
+### Connecting an MCP Server (CRM agent)
+
+1. Install MCP deps: `uv sync` (adds `langchain-mcp-adapters` and `mcp`)
+2. Start your local MCP server (streamable-http transport)
+3. Set `MCP_CRM_SERVER_URL` in `.env` (e.g. `http://localhost:8002/mcp`)
+4. The CRM agent auto-discovers the server's tools at runtime — no code change needed
+5. If the server is unreachable, the agent transparently falls back to its built-in CRM tool
 
 ## 🧪 Testing
 

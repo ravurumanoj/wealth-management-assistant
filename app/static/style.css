@@ -300,6 +300,87 @@ kbd {
   50%      { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.08); }
 }
 
+/* Activity log (replaces agent pipeline status card) */
+.activity-card { background: var(--bg-subtle); }
+
+.activity-live {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-subtle);
+  display: inline-block;
+}
+.activity-live.is-active {
+  background: var(--brand-500);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.activity-log {
+  list-style: none;
+  margin: 0; padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-empty {
+  font-size: 12px;
+  color: var(--text-subtle);
+  padding: 8px 2px;
+  text-align: center;
+}
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: var(--radius-sm);
+  animation: fadeSlideIn 0.2s ease;
+}
+.activity-item.is-active { background: var(--bg-hover); }
+.activity-item.is-done   { opacity: 0.75; }
+
+.activity-icon {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  margin-top: 1px;
+}
+.activity-icon.icon-route  { color: var(--brand-500); }
+.activity-icon.icon-agent  { color: #0ea5e9; }
+.activity-icon.icon-tool   { color: #f59e0b; }
+.activity-icon.icon-write  { color: var(--success-fg); }
+.activity-icon.icon-check  { color: var(--success-fg); }
+.activity-icon.icon-error  { color: var(--danger-fg); }
+
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+.activity-msg {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.activity-time {
+  display: block;
+  font-size: 10px;
+  color: var(--text-subtle);
+  margin-top: 1px;
+  font-feature-settings: "tnum";
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Dropzone */
 .dropzone {
   display: flex;

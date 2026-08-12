@@ -20,15 +20,11 @@ from typing import List, Optional, Union
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from app.services.llm import get_llm
+from app.constants import MAX_HISTORY_TURNS, HISTORY_SUMMARY_THRESHOLD
 from app.utils.logger import logger
 
-# Maximum number of prior conversation turns (user+assistant pairs) to include.
-MAX_HISTORY_TURNS = 6
-
-# When history exceeds this many messages (user + assistant combined), the
-# oldest turns are compressed into a rolling summary.  The 4 most-recent
-# messages are always kept verbatim; earlier ones are summarised.
-HISTORY_SUMMARY_THRESHOLD = 10
+# Re-export so existing callers that import these from base.py still work
+__all__ = ["MAX_HISTORY_TURNS", "HISTORY_SUMMARY_THRESHOLD"]
 
 # Process-wide singleton so every agent shares one LLM client.
 _shared_llm = None

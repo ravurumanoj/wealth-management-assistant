@@ -21,11 +21,21 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     RELOAD: bool = True  # Auto-reload on code changes
 
-    # Google Gemini LLM Settings
-    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
-    GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", 0.7))
-    GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", 8192))
+    # ── Google Gemini LLM Settings (DISABLED — Unique AI is active) ─────────
+    # GEMINI_DISABLED: commented out but kept for reference / easy re-enable
+    # GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
+    # GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+    # GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", 0.7))
+    # GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", 8192))
+    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")  # kept for health-check only
+
+    # ── Unique AI LLM Settings (active) ──────────────────────────────────────
+    UNIQUE_API_BASE_URL: str = os.getenv("UNIQUE_API_BASE_URL", "")
+    UNIQUE_MODEL_NAME: str = os.getenv("UNIQUE_MODEL_NAME", "")
+    UNIQUE_APP_ID: str = os.getenv("UNIQUE_APP_ID", "")
+    UNIQUE_APP_KEY: str = os.getenv("UNIQUE_APP_KEY", "")
+    UNIQUE_COMPANY_ID: str = os.getenv("UNIQUE_COMPANY_ID", "")
+    UNIQUE_USER_ID: str = os.getenv("UNIQUE_USER_ID", "")
 
     # Embedding model for semantic memory retrieval (vector similarity search).
     # Must support `embedContent` for the configured API key.
@@ -39,15 +49,19 @@ class Settings(BaseSettings):
     # per client, persisted across all sessions.
     LONG_TERM_MEMORY_PATH: str = "data/memory/long_term_memory.json"
 
-    # ── MySQL Memory Database Settings ──────────────────────────────────────
-    # Short-term (chat sessions/messages/summaries) AND long-term (episodic,
-    # semantic, procedural) memory are now persisted in MySQL.
-    # Override any of these via environment variables or a .env file.
-    MYSQL_HOST: str = os.getenv("MYSQL_HOST", "localhost")
-    MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", 3306))
-    MYSQL_USER: str = os.getenv("MYSQL_USER", "root")
-    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
-    MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "wealth_memory")
+    # ── MySQL Memory Database Settings (DISABLED — PostgreSQL is active) ─────────
+    # MYSQL_HOST: str = os.getenv("MYSQL_HOST", "localhost")
+    # MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", 3306))
+    # MYSQL_USER: str = os.getenv("MYSQL_USER", "root")
+    # MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
+    # MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "wealth_memory")
+
+    # ── PostgreSQL Memory Database Settings (active) ─────────────────────────
+    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5432))
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
+    POSTGRES_DATABASE: str = os.getenv("POSTGRES_DATABASE", "wealth_memory")
     # Optional: provide a full SQLAlchemy URL to override the parts above.
     MEMORY_DATABASE_URL_OVERRIDE: Optional[str] = os.getenv("MEMORY_DATABASE_URL")
     # Echo SQL statements to the logs (useful for debugging only).
@@ -55,21 +69,34 @@ class Settings(BaseSettings):
 
     @property
     def MEMORY_DATABASE_URL(self) -> str:
-        """Return the SQLAlchemy connection URL for the memory database.
-
-        Uses ``MEMORY_DATABASE_URL`` verbatim when supplied, otherwise builds a
-        ``mysql+pymysql://`` URL from the individual MYSQL_* settings.
-        """
+        """Return the SQLAlchemy connection URL for the memory database."""
         if self.MEMORY_DATABASE_URL_OVERRIDE:
             return self.MEMORY_DATABASE_URL_OVERRIDE
         from urllib.parse import quote_plus
-        password = quote_plus(self.MYSQL_PASSWORD)
+        password = quote_plus(self.POSTGRES_PASSWORD)
+        # MYSQL_DISABLED — was: mysql+pymysql://{user}:{pw}@{host}:{port}/{db}?charset=utf8mb4
         return (
-            f"mysql+pymysql://{self.MYSQL_USER}:{password}"
-            f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
-            f"?charset=utf8mb4"
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{password}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE}"
         )
     
+    # ── MCP (Model Context Protocol) Settings ───────────────────────────────
+    # The Relationship Intelligence (CRM) agent connects to a *local* MCP
+    # server over the streamable-http transport, discovers its tools at runtime,
+    # and lets the LLM call them (true tool calling). If the server URL is not
+    # set or the server is unreachable, the agent transparently falls back to
+    # its built-in CRM tool, so the app keeps working without MCP configured.
+    #
+    # TODO: point MCP_CRM_SERVER_URL at your running MCP server, e.g.
+    #       http://localhost:8002/mcp   (set it here or via the MCP_CRM_SERVER_URL env var / .env).
+    MCP_ENABLED: bool = os.getenv("MCP_ENABLED", "True").lower() in ("true", "1", "t")
+    MCP_CRM_SERVER_URL: Optional[str] = os.getenv("MCP_CRM_SERVER_URL")  # e.g. "http://localhost:8002/mcp"
+    MCP_TRANSPORT: str = os.getenv("MCP_TRANSPORT", "streamable_http")
+    # How long (seconds) to wait when connecting / discovering tools before falling back.
+    MCP_TIMEOUT: float = float(os.getenv("MCP_TIMEOUT", 15))
+    # Safety cap on tool-call rounds per turn so a misbehaving model can't loop forever.
+    MCP_MAX_TOOL_ITERATIONS: int = int(os.getenv("MCP_MAX_TOOL_ITERATIONS", 5))
+
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     ENABLE_FILE_LOGGING: bool = os.getenv("ENABLE_FILE_LOGGING", "True").lower() in ("true", "1", "t")

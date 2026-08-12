@@ -165,12 +165,10 @@
   const runStatus         = $("run-status");
   const agentTimeline     = $("agent-timeline");
   const toastRoot         = $("toast-root");
-  const statusMeta        = $("status-meta");
   const topbarTitle       = $("topbar-title");
   const footerModel       = $("footer-model");
-  const pipelineRouter    = $("agent-router-status");
-  const pipelinePortfolio = $("agent-portfolio-status");
-  const pipelineCRM       = $("agent-crm-status");
+  const activityLog       = $("activity-log");
+  const activityLive      = $("activity-live");
 
   /* ================ state ================ */
   let sessions         = [];
@@ -677,40 +675,54 @@
     thinkingEl = null;
   }
 
-  /* ================ agent pipeline status cards ================ */
-  /**
-   * Update the Agent Pipeline sidebar cards during a request.
-   * - state: "idle" | "running" | "done" | "error"
-   * - agentKey: "portfolio_insights" | "relationship_intelligence" | null
-   */
-  function updatePipelineStatus(state, agentKey) {
-    if (!pipelineRouter) return; // elements may not exist
-    if (state === "running") {
-      if (pipelineRouter)    { pipelineRouter.textContent    = "routing…"; pipelineRouter.style.color    = "var(--brand-600)"; }
-      if (pipelinePortfolio) { pipelinePortfolio.textContent = "waiting";  pipelinePortfolio.style.color = "var(--text-subtle)"; }
-      if (pipelineCRM)       { pipelineCRM.textContent       = "waiting";  pipelineCRM.style.color       = "var(--text-subtle)"; }
-    } else if (state === "done") {
-      if (pipelineRouter)    { pipelineRouter.textContent    = "done";   pipelineRouter.style.color    = "var(--success-fg)"; }
-      const isPortfolio = agentKey === "portfolio_insights";
-      const isCRM       = agentKey === "relationship_intelligence";
-      const isDirect    = agentKey === "general" || agentKey === "needs_clarification";
-      if (pipelinePortfolio) {
-        pipelinePortfolio.textContent = isPortfolio ? "done" : isDirect ? "n/a" : "skipped";
-        pipelinePortfolio.style.color = isPortfolio ? "var(--success-fg)" : "var(--text-subtle)";
-      }
-      if (pipelineCRM) {
-        pipelineCRM.textContent = isCRM ? "done" : isDirect ? "n/a" : "skipped";
-        pipelineCRM.style.color = isCRM ? "var(--success-fg)" : "var(--text-subtle)";
-      }
-      if (statusMeta) statusMeta.textContent = `Last agent: ${AGENT_LABELS[agentKey]?.label || agentKey}`;
-    } else if (state === "error") {
-      if (pipelineRouter)    { pipelineRouter.textContent    = "error"; pipelineRouter.style.color    = "var(--danger-fg)"; }
-    } else {
-      // idle — reset
-      if (pipelineRouter)    { pipelineRouter.textContent    = "ready"; pipelineRouter.style.color    = ""; }
-      if (pipelinePortfolio) { pipelinePortfolio.textContent = "ready"; pipelinePortfolio.style.color = ""; }
-      if (pipelineCRM)       { pipelineCRM.textContent       = "ready"; pipelineCRM.style.color       = ""; }
-    }
+  /* ================ activity log ================ */
+  const ICON_MAP = {
+    route: "🔀", agent: "🤖", tool: "🔧", write: "✍️", check: "✅", error: "❌",
+  };
+
+  function clearActivityLog() {
+    if (!activityLog) return;
+    activityLog.innerHTML = "";
+    if (activityLive) { activityLive.className = "activity-live is-active"; }
+  }
+
+  function addActivityEntry(icon, msg, done) {
+    if (!activityLog) return;
+    // Remove empty placeholder if present
+    const empty = activityLog.querySelector(".activity-empty");
+    if (empty) empty.remove();
+
+    const li = document.createElement("li");
+    li.className = `activity-item ${done ? "is-done" : "is-active"}`;
+
+    const iconEl = document.createElement("span");
+    iconEl.className = `activity-icon icon-${icon}`;
+    iconEl.textContent = ICON_MAP[icon] || "•";
+    iconEl.setAttribute("aria-hidden", "true");
+
+    const body = document.createElement("div");
+    body.className = "activity-body";
+
+    const msgEl = document.createElement("span");
+    msgEl.className = "activity-msg";
+    msgEl.textContent = msg;
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "activity-time";
+    timeEl.textContent = nowTime();
+
+    body.append(msgEl, timeEl);
+    li.append(iconEl, body);
+    activityLog.appendChild(li);
+    activityLog.scrollTop = activityLog.scrollHeight;
+  }
+
+  function finishActivityLog() {
+    if (activityLive) { activityLive.className = "activity-live"; }
+    // Mark any remaining active items as done
+    activityLog?.querySelectorAll(".activity-item.is-active").forEach(
+      el => el.classList.replace("is-active", "is-done")
+    );
   }
 
   /* ================ busy guard ================ */
@@ -813,12 +825,12 @@
     charCount.textContent = "0 / 2000";
     setSendBusy(true);
 
-    // Reset / start the timeline
+    // Reset timeline and activity log
     agentTimeline.innerHTML = "";
     runStatus.textContent = "running";
     runStatus.className = "badge badge-warning";
     timelineStep("router", "running");
-    updatePipelineStatus("running", null);
+    clearActivityLog();
 
     // Thinking card while we wait for first token
     mountThinking();
@@ -851,7 +863,6 @@
         const { type } = event;
 
         if (type === "step") {
-          // Update agent timeline and pipeline cards
           timelineStep(event.node, event.state);
           if (event.node !== "router") {
             thinkingAddStep(
@@ -859,6 +870,9 @@
               event.state === "running" ? "active" : "done"
             );
           }
+
+        } else if (type === "activity") {
+          addActivityEntry(event.icon || "check", event.msg || "", event.done === true);
 
         } else if (type === "token") {
           // Dismiss thinking card on the very first token
@@ -881,7 +895,7 @@
           timelineStep("done", "done");
           runStatus.textContent = "done";
           runStatus.className = "badge badge-model";
-          updatePipelineStatus("done", agentUsed);
+          finishActivityLog();
           recordTurn("assistant", fullText);
 
         } else if (type === "error") {
@@ -903,7 +917,8 @@
       timelineStep("error", "error");
       runStatus.textContent = "error";
       runStatus.className = "badge badge-warning";
-      updatePipelineStatus("error", null);
+      addActivityEntry("error", `Error: ${err.message || "request failed"}`, true);
+      finishActivityLog();
       appendMessage("error", `Error: ${err.message || "Something went wrong. Please try again."}`);
       toast(err.message || "Request failed", { kind: "error", title: "Chat error" });
     } finally {
@@ -936,7 +951,6 @@
 
     loadClients();
     loadModelInfo();
-    updatePipelineStatus("idle", null);
 
     // Background sync: pull any server-side sessions missing from localStorage.
     // Runs after the initial paint so it never blocks the UI.
