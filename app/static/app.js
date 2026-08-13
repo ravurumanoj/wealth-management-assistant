@@ -262,6 +262,7 @@
       });
       // Sync delete icon visibility with current selection after reload
       showDeleteBtn(clientSelect.value);
+      updatePortfolioSelector(clientSelect.value);
     } catch (err) { console.warn("Could not load clients:", err); }
   }
 
@@ -287,7 +288,42 @@
   clientSelect.addEventListener("change", () => {
     updatePortfolioStrip(clientSelect.value);
     showDeleteBtn(clientSelect.value);
+    updatePortfolioSelector(clientSelect.value);
   });
+
+  /* ================ Topbar portfolio ID selector ================ */
+  const portfolioSelector = $("portfolio-selector");
+  const portfolioChipsEl  = $("portfolio-chips");
+  let activePortfolioIds  = new Set();
+
+  function updatePortfolioSelector(clientId) {
+    if (!portfolioSelector || !portfolioChipsEl) return;
+    const ids = clientPortfolioMap.get(clientId) || [];
+    activePortfolioIds.clear();
+    portfolioChipsEl.innerHTML = "";
+    if (!ids.length) { portfolioSelector.hidden = true; return; }
+    portfolioSelector.hidden = false;
+    ids.forEach(pid => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "portfolio-chip";
+      chip.textContent = pid;
+      chip.title = `Toggle portfolio ${pid}`;
+      chip.setAttribute("aria-pressed", "false");
+      chip.addEventListener("click", () => {
+        if (activePortfolioIds.has(pid)) {
+          activePortfolioIds.delete(pid);
+          chip.classList.remove("is-active");
+          chip.setAttribute("aria-pressed", "false");
+        } else {
+          activePortfolioIds.add(pid);
+          chip.classList.add("is-active");
+          chip.setAttribute("aria-pressed", "true");
+        }
+      });
+      portfolioChipsEl.appendChild(chip);
+    });
+  }
 
   /* ================ Add Client modal ================ */
   const addClientModal  = $("add-client-modal");
@@ -993,7 +1029,9 @@
     const payload = {
       message: query,
       session_id: sessionId,
-      metadata: clientId ? { client_id: clientId } : {},
+      metadata: clientId
+        ? { client_id: clientId, ...(activePortfolioIds.size ? { active_portfolio_ids: [...activePortfolioIds] } : {}) }
+        : {},
     };
 
     let streamBubble = null; // { wrap, body, liveP }

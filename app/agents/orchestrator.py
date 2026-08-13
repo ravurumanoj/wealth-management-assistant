@@ -63,6 +63,13 @@ async def stream_agent(
     from app.services.memory import memory_service
 
     client_id = (metadata or {}).get("client_id") or "unknown"
+    active_portfolio_ids = (metadata or {}).get("active_portfolio_ids") or []
+
+    # Prepend active portfolio context to the message so agents know the scope
+    if active_portfolio_ids:
+        ids_str = ", ".join(active_portfolio_ids)
+        message = f"[Active portfolios in scope: {ids_str}]\n\n{message}"
+
     state_base: dict = {
         "messages": [HumanMessage(content=message)],
         "session_id": session_id or "",

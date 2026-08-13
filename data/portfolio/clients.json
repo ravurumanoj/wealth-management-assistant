@@ -40,5 +40,17 @@
     "segment": "HNI",
     "risk_profile": "moderate",
     "relationship_manager": "Deepak Joshi"
+  },
+  {
+    "id": "DEMO-001",
+    "name": "manoj",
+    "segment": "Demo",
+    "risk_profile": "moderate",
+    "relationship_manager": "Demo RM",
+    "is_custom": true,
+    "portfolio_ids": [
+      "123",
+      "5443"
+    ]
   }
 ]

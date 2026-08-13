@@ -875,6 +875,52 @@ kbd {
 }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 
+/* Portfolio ID selector in topbar */
+.portfolio-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.portfolio-selector[hidden] { display: none; }
+.portfolio-selector-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.portfolio-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.portfolio-chip {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.portfolio-chip:hover {
+  border-color: var(--brand-500);
+  color: var(--brand-600);
+  background: var(--brand-50);
+}
+.portfolio-chip.is-active {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(99,102,241,0.35);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
