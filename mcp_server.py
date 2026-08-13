@@ -2,9 +2,11 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import requests
 import os
+import uvicorn
 from fastapi import HTTPException
 from typing import List
 from dotenv import load_dotenv
+from mcp_middleware import MCPAuthMiddleware
 
 load_dotenv()
 
@@ -27,7 +29,7 @@ def get_customer_overview(customer_id: str) -> dict:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Overview for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Overview for ID {customer_id}")
     
 def get_customer_interactions(customer_id: str) -> List[dict]:
     """Fetches Interactions of the Customer based on given Customer ID"""
@@ -35,7 +37,7 @@ def get_customer_interactions(customer_id: str) -> List[dict]:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Interactions for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Interactions for ID {customer_id}")
 
 def get_customer_portfolio(customer_id: str) -> List[dict]:
     """Fetches Portfolio of the Customer based on given Customer ID"""
@@ -43,7 +45,7 @@ def get_customer_portfolio(customer_id: str) -> List[dict]:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Portfolio for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Portfolio for ID {customer_id}")
 
 def get_customer_risk_analysis(customer_id: str) -> dict:
     """Fetches Risk Analysis of the Customer based on given Customer ID"""
@@ -51,7 +53,7 @@ def get_customer_risk_analysis(customer_id: str) -> dict:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Risk Analysis for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Risk Analysis for ID {customer_id}")
     
 def get_customer_brief(customer_id: str) -> dict:
     """Fetches Brief of the Customer based on given Customer ID"""
@@ -59,7 +61,7 @@ def get_customer_brief(customer_id: str) -> dict:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Brief for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Brief for ID {customer_id}")
 
 def get_customer_transactions(customer_id: str) -> List[dict]:
     """Fetches Transactions of the Customer based on given Customer ID"""
@@ -67,10 +69,14 @@ def get_customer_transactions(customer_id: str) -> List[dict]:
     if response.status_code == 200:
         return response.json()
     else:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Customer Transactions for ID {customer_id}")
+        raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch Customer Transactions for ID {customer_id}")
     
 
 app = FastMCP(name="crm_mcp_server")
+
+asgi_app = app.http_app()
+
+asgi_app.add_middleware(MCPAuthMiddleware)
 
 app.tool(get_crm_health, name="health", description="Check CRM database health", 
          annotations=ToolAnnotations(title="crm_health", readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False))
@@ -84,4 +90,5 @@ app.tool(get_customer_brief, name="customer_brief", description="Get customer br
 
 
 if __name__ == "__main__":
-    app.run(transport="streamable-http", host="127.0.0.1", port=9000)
+    # app.run(transport="streamable-http", host="127.0.0.1", port=9000)
+    uvicorn.run(asgi_app, host="127.0.0.1", port=9000)
