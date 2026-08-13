@@ -9,18 +9,21 @@ load_dotenv()
 SECRET_KEY = str(os.getenv("JWT_SECRET_KEY"))
 ALGORITHM = "HS256"
 
-def create_access_token(username: str):
+def create_access_token(username: str, secret: str):
 
-    payload = {
-        "sub": username,
-        "exp": datetime.utcnow() + timedelta(hours=1)
-    }
+    if secret.lower() == SECRET_KEY.lower():
+        payload = {
+            "sub": username,
+            "exp": datetime.utcnow() + timedelta(hours=1)
+        }
 
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
+        return jwt.encode(
+            payload,
+            SECRET_KEY,
+            algorithm=ALGORITHM
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Invalid Secret Key")
 
 
 def verify_token(authorization: str = Header(None)):
