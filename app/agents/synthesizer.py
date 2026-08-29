@@ -16,7 +16,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.base import BaseAgent, extract_text
 from app.agents.state import AgentState
-from app.constants import MAX_RETRIES
+from app.constants import (
+    MAX_RETRIES,
+    ROUTE_BOTH,
+    ROUTE_CRM_ONLY,
+    ROUTE_GENERAL,
+    ROUTE_GREETING,
+    ROUTE_PORTFOLIO_ONLY,
+)
 from app.prompts.synthesizer import (
     SYNTHESIZER_CLARIFICATION_TEMPLATE,
     SYNTHESIZER_SYSTEM_PROMPT,
@@ -38,7 +45,7 @@ class SynthesizerAgent(BaseAgent):
         """
         route = state.get("route", "general")
 
-        if route in ("general", "greeting"):
+        if route in (ROUTE_GENERAL, ROUTE_GREETING):
             return True, ""
 
         portfolio_output = state.get("portfolio_output") or {}
@@ -46,8 +53,8 @@ class SynthesizerAgent(BaseAgent):
         portfolio_has_data = bool(portfolio_output.get("tool_results"))
         crm_has_data = bool(crm_output.get("tool_results"))
 
-        needs_portfolio = route in ("portfolio_only", "both")
-        needs_crm = route in ("crm_only", "both")
+        needs_portfolio = route in (ROUTE_PORTFOLIO_ONLY, ROUTE_BOTH)
+        needs_crm = route in (ROUTE_CRM_ONLY, ROUTE_BOTH)
 
         missing: list[str] = []
         if needs_portfolio and not portfolio_has_data:

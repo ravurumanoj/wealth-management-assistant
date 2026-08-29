@@ -16,6 +16,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.errors import DataAccessError
+from app.schemas.crm import (
+    AdvisoryView,
+    CrmSummaryItem,
+    CustomerProfileView,
+    InteractionsView,
+)
 from app.services.crm_tools import CrmTools
 
 logger = logging.getLogger(__name__)
@@ -33,14 +39,22 @@ def _raise_404_if_not_found(exc: DataAccessError, customer_id: str) -> None:
     raise exc
 
 
-@router.get("/", summary="All customers — RM pipeline summary")
+@router.get(
+    "/",
+    summary="All customers — RM pipeline summary",
+    response_model=list[CrmSummaryItem],
+)
 def list_customers_summary() -> list[dict[str, Any]]:
     """Return an RM pipeline overview for all customers."""
     logger.info("CRM customer summary list requested")
     return _tools.get_all_customers_summary()
 
 
-@router.get("/{customer_id}", summary="Customer full profile")
+@router.get(
+    "/{customer_id}",
+    summary="Customer full profile",
+    response_model=CustomerProfileView,
+)
 def get_customer_full_profile(customer_id: str) -> dict[str, Any]:
     """Return demographics, account metadata, and RM info for one customer."""
     logger.info("Customer full profile requested", extra={"customer_id": customer_id})
@@ -50,7 +64,11 @@ def get_customer_full_profile(customer_id: str) -> dict[str, Any]:
         _raise_404_if_not_found(exc, customer_id)
 
 
-@router.get("/{customer_id}/interactions", summary="Interactions — conversations + open service requests")
+@router.get(
+    "/{customer_id}/interactions",
+    summary="Interactions — conversations + open service requests",
+    response_model=InteractionsView,
+)
 def get_interactions(
     customer_id: str,
     channel: Annotated[
@@ -77,7 +95,11 @@ def get_interactions(
         _raise_404_if_not_found(exc, customer_id)
 
 
-@router.get("/{customer_id}/advisory", summary="Advisory view — suggestions, compliance, alerts")
+@router.get(
+    "/{customer_id}/advisory",
+    summary="Advisory view — suggestions, compliance, alerts",
+    response_model=AdvisoryView,
+)
 def get_advisory_view(customer_id: str) -> dict[str, Any]:
     """Return suggestions, compliance flags, and active alerts."""
     logger.info("Advisory view requested", extra={"customer_id": customer_id})

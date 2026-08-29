@@ -19,16 +19,25 @@ from app.db.session import session_scope
 # LTM_DISABLED — embeddings disabled; uncomment when available
 # from app.services import embeddings
 from app.utils.logger import logger
+from app.constants import (
+    EPISODIC_ANSWER_MAX_LEN,
+    LTM_MAX_EPISODIC,
+    LTM_MAX_PREFERENCES,
+    LTM_MAX_PROCEDURAL,
+    LTM_MAX_SEMANTIC,
+    SEMANTIC_MERGE_THRESHOLD,
+    SEMANTIC_SOURCE_QUERY_MAX_LEN,
+)
 
 # ── per-client caps (mirror the previous JSON backend) ──────────────────────────
-_MAX_EPISODIC: int = 50    # keep last 50 Q&A episodes
-_MAX_SEMANTIC: int = 30    # keep last 30 extracted facts
-_MAX_PROCEDURAL: int = 20  # keep last 20 behavioural patterns
-_MAX_PREFERENCES: int = 40  # keep up to 40 preference keys per client
+_MAX_EPISODIC: int = LTM_MAX_EPISODIC
+_MAX_SEMANTIC: int = LTM_MAX_SEMANTIC
+_MAX_PROCEDURAL: int = LTM_MAX_PROCEDURAL
+_MAX_PREFERENCES: int = LTM_MAX_PREFERENCES
 
 # Cosine-similarity threshold above which a "new" semantic fact is treated as a
 # restatement of an existing one and updated in place rather than appended.
-_SEMANTIC_MERGE_THRESHOLD: float = 0.88
+_SEMANTIC_MERGE_THRESHOLD: float = SEMANTIC_MERGE_THRESHOLD
 
 
 def _now() -> datetime:
@@ -65,7 +74,7 @@ def add_episodic(
                     client_id=client_id,
                     session_id=session_id,
                     query=query,
-                    answer=answer[:800],
+                    answer=answer[:EPISODIC_ANSWER_MAX_LEN],
                     intent=intent,
                     confidence=round(confidence, 3),
                     embedding=embedding_blob,
@@ -218,7 +227,7 @@ def add_semantic_fact(
                     fact=fact,
                     fact_hash=fact_hash,
                     confidence=round(confidence, 3),
-                    source_query=source_query[:300],
+                    source_query=source_query[:SEMANTIC_SOURCE_QUERY_MAX_LEN],
                     embedding=embedding_blob,
                     created_at=_now(),
                 )

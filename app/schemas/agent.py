@@ -3,11 +3,17 @@ import re
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Optional
 
-# Validation constants mirror the original helper logic in app/utils/helpers.py
-_SESSION_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
-_CONTROL_CHAR_PATTERN = re.compile(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]')
-_MAX_SESSION_ID_LENGTH = 100
-_MAX_MESSAGE_LENGTH = 5000
+from app.constants import (
+    CONTROL_CHAR_REGEX,
+    MAX_MESSAGE_LENGTH,
+    MAX_SESSION_ID_LENGTH,
+    SESSION_ID_REGEX,
+)
+
+_SESSION_ID_PATTERN = re.compile(SESSION_ID_REGEX)
+_CONTROL_CHAR_PATTERN = re.compile(CONTROL_CHAR_REGEX)
+_MAX_SESSION_ID_LENGTH = MAX_SESSION_ID_LENGTH
+_MAX_MESSAGE_LENGTH = MAX_MESSAGE_LENGTH
 
 
 class ChatRequest(BaseModel):
@@ -47,4 +53,21 @@ class SessionInfo(BaseModel):
     client_id: Optional[str] = "unknown"
     last_updated: str
     history_count: int
+
+
+class ChatMessage(BaseModel):
+    """A single stored message within a session's history."""
+
+    role: str = Field(..., description="Message role: 'user' or 'assistant'.")
+    content: str = Field(..., description="Message text.")
+    timestamp: Optional[str] = Field(None, description="ISO-8601 message timestamp.")
+
+
+class SessionHistoryResponse(BaseModel):
+    """Full chat history for one session."""
+
+    session_id: str = Field(..., description="Session identifier.")
+    history: List[ChatMessage] = Field(
+        default_factory=list, description="Messages in chronological order."
+    )
 

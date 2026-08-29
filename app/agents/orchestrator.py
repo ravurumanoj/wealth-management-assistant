@@ -8,6 +8,13 @@ from langchain_core.messages import HumanMessage
 from app.agents.base import extract_text as _extract_text
 from app.agents.graph import app_graph
 from app.agents.memory import long_term_memory
+from app.constants import (
+    DEFAULT_CLIENT_ID,
+    ROUTE_BOTH,
+    ROUTE_CRM_ONLY,
+    ROUTE_GENERAL,
+    ROUTE_PORTFOLIO_ONLY,
+)
 from app.utils.logger import logger
 
 
@@ -62,7 +69,7 @@ async def stream_agent(
     from app.agents.synthesizer import synthesizer_agent
     from app.services.memory import memory_service
 
-    client_id = (metadata or {}).get("client_id") or "unknown"
+    client_id = (metadata or {}).get("client_id") or DEFAULT_CLIENT_ID
     active_portfolio_ids = (metadata or {}).get("active_portfolio_ids") or []
 
     # Prepend active portfolio context to the message so agents know the scope
@@ -119,7 +126,7 @@ async def stream_agent(
     logger.info(f"stream_agent: route={route} session={session_id}")
 
     # ── 3. General route — synthesizer with no tool data ─────────────────────
-    if route == "general":
+    if route == ROUTE_GENERAL:
         yield {"type": "step", "node": "synthesizer", "state": "running"}
         yield {"type": "activity", "icon": "write", "msg": "Synthesizer: generating response..."}
         full_response = ""
@@ -128,26 +135,26 @@ async def stream_agent(
             yield {"type": "token", "content": token}
         yield {"type": "step", "node": "synthesizer", "state": "done"}
         yield {"type": "activity", "icon": "check", "msg": "Done", "done": True}
-        yield {"type": "done", "agent_used": "general", "full_response": full_response}
+        yield {"type": "done", "agent_used": ROUTE_GENERAL, "full_response": full_response}
         _save_long_term(client_id, session_id, message, full_response, route)
         return
 
     # ── 4. Run agents (parallel for 'both') ──────────────────────────────────
-    if route in ("portfolio_only", "both"):
+    if route in (ROUTE_PORTFOLIO_ONLY, ROUTE_BOTH):
         yield {"type": "step", "node": "portfolio_agent", "state": "running"}
         yield {"type": "activity", "icon": "agent", "msg": "Portfolio Agent: fetching data..."}
-    if route in ("crm_only", "both"):
+    if route in (ROUTE_CRM_ONLY, ROUTE_BOTH):
         yield {"type": "step", "node": "crm_agent", "state": "running"}
         yield {"type": "activity", "icon": "agent", "msg": "CRM Agent: fetching interaction data..."}
 
     try:
-        if route == "portfolio_only":
+        if route == ROUTE_PORTFOLIO_ONLY:
             portfolio_data = await portfolio_insights_agent.collect_data(
                 state_base, history=prior_history, summary=updated_summary
             )
             state_base["portfolio_output"] = portfolio_data
 
-        elif route == "crm_only":
+        elif route == ROUTE_CRM_ONLY:
             crm_data = await relationship_intelligence_agent.collect_data(
                 state_base, history=prior_history, summary=updated_summary
             )
@@ -169,11 +176,11 @@ async def stream_agent(
         yield {"type": "error", "message": f"Failed to retrieve data: {str(e)}"}
         return
 
-    if route in ("portfolio_only", "both"):
+    if route in (ROUTE_PORTFOLIO_ONLY, ROUTE_BOTH):
         tools_p = (state_base.get("portfolio_output") or {}).get("tools_called", [])
         yield {"type": "step", "node": "portfolio_agent", "state": "done"}
         yield {"type": "activity", "icon": "tool", "msg": f"Portfolio: {', '.join(tools_p) or 'no tools called'}", "done": True}
-    if route in ("crm_only", "both"):
+    if route in (ROUTE_CRM_ONLY, ROUTE_BOTH):
         tools_c = (state_base.get("crm_output") or {}).get("tools_called", [])
         yield {"type": "step", "node": "crm_agent", "state": "done"}
         yield {"type": "activity", "icon": "tool", "msg": f"CRM: {', '.join(tools_c) or 'no tools called'}", "done": True}

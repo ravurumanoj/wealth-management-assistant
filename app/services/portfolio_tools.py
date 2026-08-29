@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from app.services.data_loader import BaseDataTools
+from app.constants import PORTFOLIO_DATA_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class PortfolioTools(BaseDataTools):
     """Portfolio-specific retrieval operations over local JSON data."""
 
     def __init__(self) -> None:
-        super().__init__("portfolio.json")
+        super().__init__(PORTFOLIO_DATA_FILE)
 
     def get_all_portfolios_summary(self) -> list[dict[str, Any]]:
         """Return a high-level RM book-of-business summary for every customer."""

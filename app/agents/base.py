@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from app.services.llm import get_llm
-from app.constants import MAX_HISTORY_TURNS, HISTORY_SUMMARY_THRESHOLD
+from app.constants import MAX_HISTORY_TURNS, HISTORY_SUMMARY_THRESHOLD, HISTORY_CONTENT_PREVIEW_LEN, HISTORY_BLOCK_MAX_CONTENT_LEN
 from app.utils.logger import logger
 
 # Re-export so existing callers that import these from base.py still work
@@ -78,7 +78,7 @@ class BaseAgent:
         turns_text = []
         for entry in to_summarise:
             role = "User" if entry.get("role") == "user" else "Assistant"
-            turns_text.append(f"{role}: {entry.get('content', '')[:300]}")
+            turns_text.append(f"{role}: {entry.get('content', '')[:HISTORY_CONTENT_PREVIEW_LEN]}")
         prior = (
             f"Existing summary:\n{existing_summary}\n\nAdditional turns:\n"
             if existing_summary
@@ -146,7 +146,7 @@ class BaseAgent:
         for entry in recent:
             role = "User" if entry.get("role") == "user" else "Helix"
             content = str(entry.get("content", "")).strip().replace("\n", " ")
-            if len(content) > 200:
-                content = content[:197] + "…"
+            if len(content) > HISTORY_BLOCK_MAX_CONTENT_LEN:
+                content = content[:HISTORY_BLOCK_MAX_CONTENT_LEN - 3] + "…"
             lines.append(f"  {role}: {content}")
         return "\n".join(lines) + "\n\n"

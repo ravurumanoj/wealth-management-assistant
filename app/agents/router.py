@@ -16,10 +16,17 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agents.base import BaseAgent, HISTORY_SUMMARY_THRESHOLD, extract_text
 from app.agents.state import AgentState
 from app.prompts.router import ROUTER_SYSTEM_PROMPT, ROUTER_USER_TEMPLATE
+from app.constants import (
+    ROUTE_BOTH,
+    ROUTE_CRM_ONLY,
+    ROUTE_GENERAL,
+    ROUTE_PORTFOLIO_ONLY,
+    VALID_ROUTES,
+)
 from app.utils.logger import logger
 
 # Valid LLM-emitted route labels
-_ROUTES = {"portfolio_only", "crm_only", "both", "general"}
+_ROUTES = VALID_ROUTES
 
 
 class RouterAgent(BaseAgent):
@@ -31,7 +38,7 @@ class RouterAgent(BaseAgent):
         user_msg = extract_text(messages[-1].content) if messages else ""
 
         if not user_msg.strip():
-            return {"route": "general"}
+            return {"route": ROUTE_GENERAL}
 
         route = await self._llm_classify(user_msg, history_block="")
         logger.info(f"Router graph node -> {route}")
@@ -51,7 +58,7 @@ class RouterAgent(BaseAgent):
         logger.info("classify_intent: classifying via LLM")
 
         if not user_msg.strip():
-            return "general", existing_summary
+            return ROUTE_GENERAL, existing_summary
 
         summary = existing_summary
         if len(history or []) > HISTORY_SUMMARY_THRESHOLD:
@@ -81,18 +88,18 @@ class RouterAgent(BaseAgent):
 
             # Fuzzy fallbacks when LLM output does not match exactly
             if "crm" in raw or "interaction" in raw or "relationship" in raw:
-                return "crm_only"
+                return ROUTE_CRM_ONLY
             if "portfolio" in raw or "invest" in raw or "holding" in raw:
-                return "portfolio_only"
+                return ROUTE_PORTFOLIO_ONLY
             if "both" in raw:
-                return "both"
+                return ROUTE_BOTH
 
             logger.warning(f"_llm_classify: unrecognised '{raw}', defaulting to general")
-            return "general"
+            return ROUTE_GENERAL
 
         except Exception as e:
             logger.error(f"_llm_classify error: {e}", exc_info=True)
-            return "general"
+            return ROUTE_GENERAL
 
 
 # Module-level singleton shared across the orchestrator and graph.

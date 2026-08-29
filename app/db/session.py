@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
+from app.constants import DB_MAX_OVERFLOW, DB_POOL_SIZE
 from app.db.models import Base
 from app.utils.logger import logger
 
@@ -16,8 +17,8 @@ from app.utils.logger import logger
 engine = create_engine(
     settings.MEMORY_DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=DB_POOL_SIZE,
+    max_overflow=DB_MAX_OVERFLOW,
     echo=settings.DB_ECHO,
     future=True,
 )

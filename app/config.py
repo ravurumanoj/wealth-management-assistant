@@ -80,6 +80,37 @@ class Settings(BaseSettings):
     MCP_TIMEOUT: float = 15.0
     MCP_MAX_TOOL_ITERATIONS: int = 5
 
+    # ── LLM Provider Selection ────────────────────────────────────────────────
+    # Active primary provider: "unique_ai" | "gemini" | "openai"
+    LLM_PROVIDER: str = "unique_ai"
+    # Ordered fallback MODEL names (not providers). Example: "gemini-1.5-pro,gpt-4o"
+    # Provider is auto-detected from the model name via MODEL_TO_PROVIDER registry.
+    LLM_FALLBACK_MODELS: str = ""
+
+    # ── Retry / backoff ───────────────────────────────────────────────────────
+    LLM_MAX_RETRIES: int = 3
+    LLM_RETRY_BASE_DELAY: float = 1.0        # seconds before first retry
+    LLM_RETRY_BACKOFF_MULTIPLIER: float = 2.0 # multiplier per retry attempt
+    LLM_RETRY_MAX_DELAY: float = 30.0         # hard cap on inter-retry wait
+
+    # ── Gemini Settings ───────────────────────────────────────────────────────
+    GEMINI_MODEL: str = "gemini-1.5-pro"
+    GEMINI_TEMPERATURE: float = 0.7
+    GEMINI_MAX_TOKENS: int = 8192
+
+    # ── OpenAI Settings ───────────────────────────────────────────────────────
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_TEMPERATURE: float = 0.7
+    OPENAI_MAX_TOKENS: int = 8192
+    # Optional: Azure OpenAI endpoint or any OpenAI-compatible base URL
+    OPENAI_BASE_URL: str = ""
+
+    # ── Proxy Settings ────────────────────────────────────────────────────────
+    # Corporate / client-side proxy. Leave empty in production environments.
+    HTTP_PROXY: str = ""
+    HTTPS_PROXY: str = ""
+
     # ── Logging ───────────────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     ENABLE_FILE_LOGGING: bool = True
@@ -88,6 +119,13 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list = ["*"]
     DEFAULT_AGENT_TIMEOUT: int = 60
     MAX_AGENT_ITERATIONS: int = 5
+
+    @property
+    def LLM_FALLBACK_MODELS_LIST(self) -> list[str]:
+        """Return the fallback model list parsed from the comma-separated string."""
+        if not self.LLM_FALLBACK_MODELS:
+            return []
+        return [m.strip() for m in self.LLM_FALLBACK_MODELS.split(",") if m.strip()]
 
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),

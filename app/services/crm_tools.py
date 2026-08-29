@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from app.services.data_loader import BaseDataTools
+from app.constants import CRM_DATA_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class CrmTools(BaseDataTools):
     """CRM-specific retrieval operations over local JSON data."""
 
     def __init__(self) -> None:
-        super().__init__("crm.json")
+        super().__init__(CRM_DATA_FILE)
 
     def get_all_customers_summary(self) -> list[dict[str, Any]]:
         """Return a pipeline-level summary for every customer."""

@@ -20,7 +20,13 @@ from app.agents.router import router_agent
 from app.agents.portfolio_insights import portfolio_insights_agent
 from app.agents.relationship_intelligence import relationship_intelligence_agent
 from app.agents.synthesizer import synthesizer_agent
-from app.constants import MAX_RETRIES
+from app.constants import (
+    MAX_RETRIES,
+    ROUTE_BOTH,
+    ROUTE_CRM_ONLY,
+    ROUTE_GENERAL,
+    ROUTE_PORTFOLIO_ONLY,
+)
 from app.utils.logger import logger
 
 # ── Standalone node functions ─────────────────────────────────────────────────
@@ -30,11 +36,11 @@ async def agent_executor_node(state: AgentState) -> dict:
     route = state.get("route", "")
     logger.info(f"agent_executor_node: route={route}")
 
-    if route == "portfolio_only":
+    if route == ROUTE_PORTFOLIO_ONLY:
         data = await portfolio_insights_agent.collect_data(state)
         return {"portfolio_output": data}
 
-    if route == "crm_only":
+    if route == ROUTE_CRM_ONLY:
         data = await relationship_intelligence_agent.collect_data(state)
         return {"crm_output": data}
 
@@ -54,8 +60,8 @@ async def clarification_request_node(state: AgentState) -> dict:
 
 def _route_from_router(state: AgentState) -> str:
     """Map state['route'] to the next graph node after router."""
-    route = state.get("route", "general")
-    if route == "general":
+    route = state.get("route", ROUTE_GENERAL)
+    if route == ROUTE_GENERAL:
         return "synthesizer"
     return "agent_executor"   # portfolio_only | crm_only | both
 

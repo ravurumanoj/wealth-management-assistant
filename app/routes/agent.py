@@ -1,23 +1,40 @@
 
 from fastapi import APIRouter, HTTPException, status, Path
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-from app.schemas.agent import ChatRequest, ChatResponse, SessionInfo
+from app.schemas.agent import (
+    ChatRequest,
+    ChatResponse,
+    SessionHistoryResponse,
+    SessionInfo,
+)
+from app.schemas.client import (
+    AddClientRequest,
+    AddClientResponse,
+    Client,
+    ClientListResponse,
+)
+from app.schemas.common import AppInfoResponse, DeletedResponse, MessageResponse
 from app.utils.logger import logger
 from app.agents.orchestrator import process_chat, stream_agent
 from app.services.memory import memory_service
 from app.config import settings
+from app.constants import (
+    CLIENTS_DATA_FILE,
+    DEFAULT_CLIENT_ID,
+    DEFAULT_CLIENTS,
+    DEMO_CLIENT_ID_PREFIX,
+    DEMO_CLIENT_RM,
+    DEMO_CLIENT_RISK_PROFILE,
+    DEMO_CLIENT_SEGMENT,
+    SSE_RESPONSE_HEADERS,
+)
 from typing import Annotated, List
+from pathlib import Path as FilePath
 import traceback
 import json
 import os
 
 router = APIRouter(tags=["Agent"], prefix="/agent")
-
-
-class AddClientRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    portfolio_ids: List[str] = Field(default_factory=list)
 
 # Path-param session IDs are validated declaratively with the same rules as ChatRequest.
 SessionIdPath = Annotated[
@@ -32,7 +49,12 @@ SessionIdPath = Annotated[
 
 # ── App info endpoint (used by UI for dynamic header/badge values) ─────────────
 
-@router.get("/info", tags=["Agent"], summary="Return app name and model info for the UI.")
+@router.get(
+    "/info",
+    tags=["Agent"],
+    summary="Return app name and model info for the UI.",
+    response_model=AppInfoResponse,
+)
 async def app_info():
     """Return dynamic configuration values shown in the chat UI header."""
     return {
@@ -94,32 +116,24 @@ async def stream_chat(request: ChatRequest):
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",   # disable nginx proxy buffering
-            "Connection": "keep-alive",
-        },
+        headers=SSE_RESPONSE_HEADERS,
     )
 
 
 # ── Non-streaming chat endpoint (kept for compatibility) ──────────────────────
 
-_CLIENTS_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "portfolio", "clients.json"
-)
+_CLIENTS_FILE = str(FilePath(__file__).resolve().parent.parent.parent / CLIENTS_DATA_FILE)
 
 # Default fallback — matches the 6 customers in data/crm.json and data/portfolio.json
-_DEFAULT_CLIENTS = [
-    {"id": "CUST-1001", "name": "Rajesh Kumar", "segment": "HNI"},
-    {"id": "CUST-1002", "name": "Priya Mehta", "segment": "HNI"},
-    {"id": "CUST-2002", "name": "Priya Sharma", "segment": "Affluent"},
-    {"id": "CUST-3003", "name": "Ananya Reddy", "segment": "Ultra-HNI"},
-    {"id": "CUST-4004", "name": "Arjun Mehta", "segment": "Mass Affluent"},
-    {"id": "CUST-5005", "name": "Kavita Nambiar", "segment": "HNI"},
-]
+_DEFAULT_CLIENTS = DEFAULT_CLIENTS
 
 
-@router.get("/clients", tags=["Agent"], summary="List available clients for the UI dropdown.")
+@router.get(
+    "/clients",
+    tags=["Agent"],
+    summary="List available clients for the UI dropdown.",
+    response_model=ClientListResponse,
+)
 async def list_clients():
     """Return the client list used by the UI sidebar dropdown."""
     try:
@@ -138,7 +152,12 @@ async def list_clients():
         return {"clients": _DEFAULT_CLIENTS}
 
 
-@router.post("/clients", tags=["Agent"], summary="Add a demo client to the client list.")
+@router.post(
+    "/clients",
+    tags=["Agent"],
+    summary="Add a demo client to the client list.",
+    response_model=AddClientResponse,
+)
 async def add_demo_client(req: AddClientRequest):
     """Append a custom demo client to clients.json and return the new entry."""
     try:
@@ -152,17 +171,17 @@ async def add_demo_client(req: AddClientRequest):
             clients = list(_DEFAULT_CLIENTS)
 
         # Generate next DEMO-XXX id
-        existing_demo = [c.get("id", "") for c in clients if str(c.get("id", "")).startswith("DEMO-")]
+        existing_demo = [c.get("id", "") for c in clients if str(c.get("id", "")).startswith(DEMO_CLIENT_ID_PREFIX)]
         nums = [int(x.split("-")[1]) for x in existing_demo if x.split("-")[1].isdigit()]
         next_num = max(nums, default=0) + 1
-        new_id = f"DEMO-{next_num:03d}"
+        new_id = f"{DEMO_CLIENT_ID_PREFIX}{next_num:03d}"
 
         new_client = {
             "id": new_id,
             "name": req.name.strip(),
-            "segment": "Demo",
-            "risk_profile": "moderate",
-            "relationship_manager": "Demo RM",
+            "segment": DEMO_CLIENT_SEGMENT,
+            "risk_profile": DEMO_CLIENT_RISK_PROFILE,
+            "relationship_manager": DEMO_CLIENT_RM,
             "is_custom": True,
             "portfolio_ids": [p.strip() for p in req.portfolio_ids if p.strip()],
         }
@@ -179,7 +198,12 @@ async def add_demo_client(req: AddClientRequest):
         raise HTTPException(status_code=500, detail="Failed to add client.")
 
 
-@router.delete("/clients/{client_id}", tags=["Agent"], summary="Delete a demo client.")
+@router.delete(
+    "/clients/{client_id}",
+    tags=["Agent"],
+    summary="Delete a demo client.",
+    response_model=DeletedResponse,
+)
 async def delete_demo_client(client_id: str):
     """Remove a custom demo client from clients.json. Only is_custom clients can be deleted."""
     try:
@@ -276,7 +300,11 @@ async def get_sessions():
         logger.debug(traceback.format_exc())
         return []
 
-@router.get("/sessions/{session_id}", status_code=status.HTTP_200_OK)
+@router.get(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=SessionHistoryResponse,
+)
 async def get_session_history(session_id: SessionIdPath):
     """
     Get complete chat history for a specific session.
@@ -310,7 +338,11 @@ async def get_session_history(session_id: SessionIdPath):
             detail="Error retrieving session history"
         )
 
-@router.delete("/sessions/{session_id}", status_code=status.HTTP_200_OK)
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+)
 async def delete_session(session_id: SessionIdPath):
     """
     Delete a specific session and its history.

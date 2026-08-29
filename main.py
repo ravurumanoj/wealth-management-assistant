@@ -4,6 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
+from app.constants import (
+    DOCS_URL,
+    HEALTH_STATUS_DEGRADED,
+    HEALTH_STATUS_HEALTHY,
+    OPENAPI_URL,
+    REDOC_URL,
+)
 from app.utils.logger import logger
 from app.routes.agent import router as agent_router
 from app.routes.ui import router as ui_router
@@ -27,9 +34,9 @@ def create_app() -> FastAPI:
         description=settings.DESCRIPTION,
         version=settings.VERSION,
         debug=settings.DEBUG,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json"
+        docs_url=DOCS_URL,
+        redoc_url=REDOC_URL,
+        openapi_url=OPENAPI_URL,
     )
 
     # Ensure the MySQL memory tables exist on startup (idempotent).
@@ -64,7 +71,7 @@ def create_app() -> FastAPI:
         """
         db_ok = ping_db()
         health_status = {
-            "status": "healthy",
+            "status": HEALTH_STATUS_HEALTHY,
             "timestamp": datetime.now().isoformat(),
             "version": settings.VERSION,
             "checks": {
@@ -77,11 +84,11 @@ def create_app() -> FastAPI:
         
         if not settings.UNIQUE_APP_KEY:
             health_status["checks"]["llm_configured"] = "warning - UNIQUE_APP_KEY not set"
-            health_status["status"] = "degraded"
+            health_status["status"] = HEALTH_STATUS_DEGRADED
 
         # Memory DB is critical — mark unhealthy if it cannot be reached.
         if not db_ok:
-            health_status["status"] = "degraded"
+            health_status["status"] = HEALTH_STATUS_DEGRADED
         
         return health_status
 

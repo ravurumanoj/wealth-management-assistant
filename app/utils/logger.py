@@ -3,6 +3,13 @@ import sys
 import os
 from logging.handlers import RotatingFileHandler
 from app.config import settings
+from app.constants import (
+    DEFAULT_LOGGER_NAME,
+    LOG_BACKUP_COUNT,
+    LOG_DATE_FORMAT,
+    LOG_FORMAT,
+    LOG_MAX_BYTES,
+)
 from pathlib import Path
 
 def setup_logger(name: str, log_file: str = None) -> logging.Logger:
@@ -24,11 +31,7 @@ def setup_logger(name: str, log_file: str = None) -> logging.Logger:
     if logger.handlers:
         return logger
 
-    # Formatter with detailed information
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -46,11 +49,10 @@ def setup_logger(name: str, log_file: str = None) -> logging.Logger:
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir, exist_ok=True)
             
-            # Rotating file handler (10MB per file, keep 5 backups)
             file_handler = RotatingFileHandler(
                 log_path,
-                maxBytes=10 * 1024 * 1024,  # 10MB
-                backupCount=5,
+                maxBytes=LOG_MAX_BYTES,
+                backupCount=LOG_BACKUP_COUNT,
                 encoding='utf-8'
             )
             file_handler.setFormatter(formatter)
@@ -62,5 +64,5 @@ def setup_logger(name: str, log_file: str = None) -> logging.Logger:
     return logger
 
 # Create a default logger for the application
-logger = setup_logger("WMA-App")
+logger = setup_logger(DEFAULT_LOGGER_NAME)
 
