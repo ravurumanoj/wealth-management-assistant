@@ -30,7 +30,8 @@ class PortfolioSummaryItem(BaseModel):
     alpha_pct: Optional[float] = None
     as_of_date: Optional[str] = None
     alert_count: int = 0
-    alerts: List[Dict[str, Any]] = Field(default_factory=list)
+    # alerts are stored as plain strings in portfolio.json; accept str or object.
+    alerts: List[Any] = Field(default_factory=list)
 
 
 class PortfolioSnapshot(BaseModel):
@@ -61,4 +62,5 @@ class ComplianceView(BaseModel):
     customer_id: Optional[str] = None
     line_of_credit: Optional[Dict[str, Any]] = None
     tax_summary: Dict[str, Any] = Field(default_factory=dict)
-    alerts: List[Dict[str, Any]] = Field(default_factory=list)
+    # alerts are stored as plain strings in portfolio.json; accept str or object.
+    alerts: List[Any] = Field(default_factory=list)

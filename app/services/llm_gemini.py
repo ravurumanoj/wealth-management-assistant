@@ -44,13 +44,18 @@ def create_gemini_llm(model: str, bound_tools: Optional[list] = None):
     # Apply SSL env vars so the underlying REST HTTP client respects them
     apply_ssl_env(get_ssl_verify())
 
-    llm = ChatGoogleGenerativeAI(
+    kwargs = dict(
         model=model,
         google_api_key=settings.GOOGLE_API_KEY,
         temperature=settings.GEMINI_TEMPERATURE,
         max_output_tokens=settings.GEMINI_MAX_TOKENS,
         convert_system_message_to_human=True,
-        transport="rest",  # REST honours HTTPS_PROXY; gRPC does not
     )
+    # transport="rest" (proxy support) is only valid on older langchain-google-genai
+    # builds; on newer ones it leaks into model_kwargs, so pass it only if accepted.
+    if "transport" in getattr(ChatGoogleGenerativeAI, "model_fields", {}):
+        kwargs["transport"] = "rest"  # REST honours HTTPS_PROXY; gRPC does not
+
+    llm = ChatGoogleGenerativeAI(**kwargs)
     logger.info(f"Gemini: created ChatGoogleGenerativeAI model={model}")
     return llm.bind_tools(bound_tools) if bound_tools else llm

@@ -67,9 +67,110 @@ ROUTE_CRM_ONLY: str = "crm_only"
 ROUTE_BOTH: str = "both"
 ROUTE_GENERAL: str = "general"
 ROUTE_GREETING: str = "greeting"
+ROUTE_OUT_OF_SCOPE: str = "out_of_scope"
 VALID_ROUTES: frozenset = frozenset(
-    {ROUTE_PORTFOLIO_ONLY, ROUTE_CRM_ONLY, ROUTE_BOTH, ROUTE_GENERAL}
+    {
+        ROUTE_PORTFOLIO_ONLY,
+        ROUTE_CRM_ONLY,
+        ROUTE_BOTH,
+        ROUTE_GENERAL,
+        ROUTE_GREETING,
+        ROUTE_OUT_OF_SCOPE,
+    }
 )
+
+# Routes that require data retrieval via the sub-agents (as opposed to a direct
+# reply, safe decline, or a general no-tool answer).
+DATA_ROUTES: frozenset = frozenset(
+    {ROUTE_PORTFOLIO_ONLY, ROUTE_CRM_ONLY, ROUTE_BOTH}
+)
+
+# ── Execution mode (for the "both" route) ─────────────────────────────────────
+# parallel   → sub-agents fetch independent data concurrently.
+# sequential → producer runs first; its result is injected into the consumer.
+EXEC_MODE_PARALLEL: str = "parallel"
+EXEC_MODE_SEQUENTIAL: str = "sequential"
+VALID_EXEC_MODES: frozenset = frozenset({EXEC_MODE_PARALLEL, EXEC_MODE_SEQUENTIAL})
+
+# ── Sub-agent identifiers (producer/consumer + re-fetch targeting) ────────────
+AGENT_PORTFOLIO: str = "portfolio"
+AGENT_CRM: str = "crm"
+VALID_AGENTS: frozenset = frozenset({AGENT_PORTFOLIO, AGENT_CRM})
+
+# Max characters of a producer's result injected into the consumer's task
+# instruction during sequential execution (keeps the handoff prompt bounded).
+SEQUENTIAL_HANDOFF_MAX_LEN: int = 1500
+
+# ── Clarification gate decisions (pre-dispatch) ───────────────────────────────
+# proceed → query is specific enough; run the pipeline.
+# clarify → query is ambiguous / under-specified; ask the RM before retrieving.
+CLARIFY_PROCEED: str = "proceed"
+CLARIFY_ASK: str = "clarify"
+VALID_CLARIFY_ACTIONS: frozenset = frozenset({CLARIFY_PROCEED, CLARIFY_ASK})
+
+# Label reported to the UI when a turn ends by asking the RM to disambiguate.
+AGENT_USED_CLARIFICATION: str = "clarification"
+
+# ── UI step-node keys (must match AGENT_LABELS in static/app.js) ──────────────
+STEP_ROUTER: str = "router"
+STEP_PORTFOLIO: str = "portfolio_insights"
+STEP_CRM: str = "relationship_intelligence"
+STEP_SYNTHESIZER: str = "synthesizer"
+STEP_GENERAL: str = "general"
+STEP_CLARIFICATION: str = "needs_clarification"
+
+# Maps a sub-agent identifier to its UI step-node key.
+AGENT_STEP_NODE: dict = {
+    AGENT_PORTFOLIO: STEP_PORTFOLIO,
+    AGENT_CRM: STEP_CRM,
+}
+
+# ── Safe-decline message (out-of-scope queries — deterministic, auditable) ────
+SAFE_DECLINE_MESSAGE: str = (
+    "I'm the Relationship Manager assistant, so I can only help with client "
+    "portfolio insights and client relationship/meeting information. I can't help "
+    "with that request, but feel free to ask me about a client's portfolio, "
+    "performance, holdings, meetings, or follow-up actions."
+)
+
+# ── Governance: entitlements, audit, guardrails (Phase 5) ─────────────────────
+ENTITLEMENTS_DATA_FILE: str = "data/entitlements.json"
+DEFAULT_RM_ID: str = "RM-DEMO"
+AUDIT_LOG_FILE: str = "logs/audit.log"
+AUDIT_LOGGER_NAME: str = "WMA-Audit"
+
+# agent_used labels for governance short-circuits (reported to the UI/audit).
+AGENT_USED_BLOCKED: str = "blocked"
+AGENT_USED_DENIED: str = "entitlement_denied"
+
+# Guardrail decision categories.
+GUARDRAIL_OK: str = "ok"
+GUARDRAIL_INJECTION: str = "prompt_injection"
+GUARDRAIL_DISALLOWED_ACTION: str = "disallowed_action"
+
+# Message shown when an input guardrail blocks a request.
+INPUT_BLOCKED_MESSAGE: str = (
+    "I can't help with that request. I can share client portfolio and "
+    "relationship information, but I can't take actions such as executing trades, "
+    "sending messages, or changing records, and I can't override my instructions."
+)
+
+# Message shown when the RM is not entitled to the requested client/portfolio.
+ENTITLEMENT_DENIED_MESSAGE: str = (
+    "You don't appear to be authorized to view this client's information, or no "
+    "authorized client is selected. Please select a client you're entitled to "
+    "before I retrieve any portfolio or relationship data."
+)
+
+# Standard compliance disclaimer appended to data answers (FR-COM-008/012).
+COMPLIANCE_DISCLAIMER: str = (
+    "_This response is informational only, based on the cited sources, and is not "
+    "investment advice or a recommendation._"
+)
+
+# Max characters of query/response persisted in an audit record.
+AUDIT_QUERY_MAX_LEN: int = 1000
+AUDIT_RESPONSE_MAX_LEN: int = 2000
 
 # ── Data file names ───────────────────────────────────────────────────────────
 PORTFOLIO_DATA_FILE: str = "portfolio.json"

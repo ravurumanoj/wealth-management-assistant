@@ -99,4 +99,8 @@ dependencies = [
     "yarl==1.24.2",
     "zstandard==0.25.0",
     "unique-sdk>=0.10.67",
+    # ── Phase 4: memory & persistence ────────────────────────────────────────
+    "qdrant-client[fastembed]>=1.12",          # in-memory episodic long-term memory
+    "langgraph-checkpoint-postgres>=2.0",      # Postgres short-term graph checkpointer
+    "psycopg[binary]>=3.2",                    # psycopg v3 required by langgraph postgres saver
 ]

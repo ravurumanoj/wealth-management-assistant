@@ -15,6 +15,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.base import BaseAgent, extract_text
+from app.agents.execution import evaluate_sufficiency
 from app.agents.state import AgentState
 from app.constants import (
     MAX_RETRIES,
@@ -26,6 +27,7 @@ from app.constants import (
 )
 from app.prompts.synthesizer import (
     SYNTHESIZER_CLARIFICATION_TEMPLATE,
+    SYNTHESIZER_PARTIAL_NOTICE,
     SYNTHESIZER_SYSTEM_PROMPT,
     SYNTHESIZER_USER_TEMPLATE,
 )
@@ -40,31 +42,20 @@ class SynthesizerAgent(BaseAgent):
     def _check_sufficiency(self, state: AgentState) -> tuple[bool, str]:
         """Return (is_sufficient, missing_description).
 
-        Checks whether the agents that *should* have run actually returned data.
-        Rule-based: empty tool_results → not sufficient.
+        Delegates to the shared ``evaluate_sufficiency`` so the streaming and
+        graph paths use identical rules.
         """
         route = state.get("route", "general")
 
         if route in (ROUTE_GENERAL, ROUTE_GREETING):
             return True, ""
 
-        portfolio_output = state.get("portfolio_output") or {}
-        crm_output = state.get("crm_output") or {}
-        portfolio_has_data = bool(portfolio_output.get("tool_results"))
-        crm_has_data = bool(crm_output.get("tool_results"))
-
-        needs_portfolio = route in (ROUTE_PORTFOLIO_ONLY, ROUTE_BOTH)
-        needs_crm = route in (ROUTE_CRM_ONLY, ROUTE_BOTH)
-
-        missing: list[str] = []
-        if needs_portfolio and not portfolio_has_data:
-            missing.append("portfolio data")
-        if needs_crm and not crm_has_data:
-            missing.append("CRM / interaction data")
-
-        if missing:
-            return False, " and ".join(missing)
-        return True, ""
+        is_sufficient, missing, _ = evaluate_sufficiency(
+            route,
+            state.get("portfolio_output") or {},
+            state.get("crm_output") or {},
+        )
+        return is_sufficient, missing
 
     # ── Context builder ───────────────────────────────────────────────────────
 
@@ -85,6 +76,11 @@ class SynthesizerAgent(BaseAgent):
             parts.append(f"--- SOURCE: CRM ({tool_name}) ---\n{result}")
             citations.append({"source": "crm", "tool": tool_name})
 
+        # Long-term episodic recall (per client), when available.
+        ltm_context = (state.get("ltm_context") or "").strip()
+        if ltm_context:
+            parts.append(f"--- LONG-TERM MEMORY ---\n{ltm_context}")
+
         return "\n\n".join(parts) if parts else "(no data retrieved)", citations
 
     # ── Internal LLM helpers ─────────────────────────────────────────────────
@@ -99,8 +95,15 @@ class SynthesizerAgent(BaseAgent):
         ]
 
     def _synthesis_messages(
-        self, user_msg: str, client_id: str, context: str
+        self, user_msg: str, client_id: str, context: str,
+        partial_missing: Optional[str] = None,
     ) -> list:
+        if partial_missing:
+            context = (
+                SYNTHESIZER_PARTIAL_NOTICE.format(missing_data=partial_missing)
+                + "\n\n"
+                + context
+            )
         return [
             SystemMessage(content=SYNTHESIZER_SYSTEM_PROMPT),
             HumanMessage(content=SYNTHESIZER_USER_TEMPLATE.format(
@@ -113,36 +116,31 @@ class SynthesizerAgent(BaseAgent):
     # ── Graph node ────────────────────────────────────────────────────────────
 
     async def run(self, state: AgentState) -> dict:
-        """LangGraph node: generate final_output or clarification_needed."""
+        """LangGraph node: generate the final response.
+
+        Sufficiency and the re-fetch/replan loop are handled by dedicated graph
+        nodes; here we synthesize whatever data is available and, if retrieval
+        stayed incomplete, add a partial-answer notice (FR-ORC-005).
+        """
         messages = state.get("messages") or []
         user_msg = extract_text(messages[-1].content) if messages else ""
         client_id = state.get("metadata", {}).get("client_id") or "unknown"
-        retry_count = state.get("retry_count") or 0
 
         is_sufficient, missing = self._check_sufficiency(state)
-
-        if not is_sufficient:
-            logger.info(f"Synthesizer: data insufficient ({missing}), generating clarification")
-            clarification = await self.llm.ainvoke(
-                self._clarification_messages(user_msg, missing)
-            )
-            clarification_text = extract_text(clarification.content)
-            return {
-                "is_sufficient": False,
-                "clarification_needed": clarification_text,
-                "final_output": clarification_text,
-                "retry_count": retry_count,
-            }
+        partial_missing = missing if not is_sufficient else None
 
         context, citations = self._build_context(state)
-        logger.info(f"Synthesizer: generating response, citations={len(citations)}")
+        logger.info(
+            f"Synthesizer: generating response, citations={len(citations)}, "
+            f"partial={bool(partial_missing)}"
+        )
 
         result = await self.llm.ainvoke(
-            self._synthesis_messages(user_msg, client_id, context)
+            self._synthesis_messages(user_msg, client_id, context, partial_missing)
         )
         response = extract_text(result.content)
         return {
-            "is_sufficient": True,
+            "is_sufficient": is_sufficient,
             "final_output": response,
             "citations": citations,
             "next_agent": "synthesizer",
@@ -155,19 +153,19 @@ class SynthesizerAgent(BaseAgent):
         state: AgentState,
         history: Optional[List[dict]] = None,
         summary: Optional[str] = None,
+        partial_missing: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream the synthesized response token-by-token."""
+        """Stream the synthesized response token-by-token.
+
+        ``partial_missing`` is set by the orchestrator when retrieval stayed
+        incomplete after all re-fetch attempts, so the answer flags the gap.
+        """
         messages = state.get("messages") or []
         user_msg = extract_text(messages[-1].content) if messages else ""
         client_id = state.get("metadata", {}).get("client_id") or "unknown"
 
-        is_sufficient, missing = self._check_sufficiency(state)
-
-        if not is_sufficient:
-            msgs = self._clarification_messages(user_msg, missing)
-        else:
-            context, _ = self._build_context(state)
-            msgs = self._synthesis_messages(user_msg, client_id, context)
+        context, _ = self._build_context(state)
+        msgs = self._synthesis_messages(user_msg, client_id, context, partial_missing)
 
         async for chunk in self.llm.astream(msgs):
             token = extract_text(chunk.content)

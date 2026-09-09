@@ -29,6 +29,7 @@ from app.prompts.relationship_intelligence import (
     RELATIONSHIP_INTELLIGENCE_SYSTEM_PROMPT,
     RELATIONSHIP_INTELLIGENCE_USER_TEMPLATE,
 )
+from app.services.crm_api_tools import CRM_TOOLS
 from app.services.mcp_client import get_mcp_tools
 from app.utils.logger import logger
 
@@ -37,14 +38,18 @@ class RelationshipIntelligenceAgent(BaseAgent):
     """CRM data collector -- discovers MCP tools, fetches results, no LLM generation."""
 
     async def _load_tools(self) -> Tuple[List[BaseTool], Dict[str, BaseTool]]:
-        """Discover MCP CRM tools. Returns (tools, tool_map); never raises."""
+        """Discover MCP CRM tools, falling back to built-in CRM tools. Never raises."""
         tools: List[BaseTool] = []
         try:
             tools = await get_mcp_tools()
         except Exception as e:
-            logger.warning(f"_load_tools: MCP discovery raised ({e}); no CRM tools this turn.")
+            logger.warning(f"_load_tools: MCP discovery raised ({e}); no MCP CRM tools this turn.")
+        # Fall back to the built-in local CRM tools when no MCP server is configured/available.
+        if not tools:
+            tools = list(CRM_TOOLS)
+            logger.info("CRMAgent: using built-in local CRM tools (no MCP server available)")
         tool_map = {t.name: t for t in tools}
-        logger.info(f"CRMAgent: {len(tools)} MCP tool(s) loaded")
+        logger.info(f"CRMAgent: {len(tools)} CRM tool(s) loaded")
         return tools, tool_map
 
     def _build_tool_messages(
@@ -53,14 +58,22 @@ class RelationshipIntelligenceAgent(BaseAgent):
         client_id: str,
         history: Optional[List[dict]] = None,
         summary: Optional[str] = None,
+        extra_context: Optional[str] = None,
     ) -> List[BaseMessage]:
-        """Build the initial message list that primes the LLM to call tools."""
+        """Build the initial message list that primes the LLM to call tools.
+
+        ``extra_context`` carries upstream producer output (sequential execution)
+        or a re-fetch instruction (replan loop) and is appended to the context.
+        """
+        additional_context = (
+            f"Client ID: {client_id}\n"
+            f"Pass customer_id = '{client_id}' to all CRM tools."
+        )
+        if extra_context:
+            additional_context += f"\n\n{extra_context}"
         user_prompt = RELATIONSHIP_INTELLIGENCE_USER_TEMPLATE.format(
             user_message=user_msg + CRM_TOOL_COLLECTION_SUFFIX,
-            additional_context=(
-                f"Client ID: {client_id}\n"
-                f"Pass customer_id = '{client_id}' to all CRM tools."
-            ),
+            additional_context=additional_context,
         )
         history_msgs = self._format_history(history or [], summary=summary)
         msgs: List[BaseMessage] = [SystemMessage(content=RELATIONSHIP_INTELLIGENCE_SYSTEM_PROMPT)]
@@ -80,6 +93,7 @@ class RelationshipIntelligenceAgent(BaseAgent):
         state: AgentState,
         history: Optional[List[dict]] = None,
         summary: Optional[str] = None,
+        extra_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Discover MCP tools, run tool-calling loop, and return raw results."""
         messages = state.get("messages") or []
@@ -92,7 +106,7 @@ class RelationshipIntelligenceAgent(BaseAgent):
             logger.warning("CRMAgent.collect_data: no MCP tools available")
             return {"tool_results": {}, "tools_called": [], "customer_id": client_id, "mcp_tools_count": 0}
 
-        msgs = self._build_tool_messages(user_msg, client_id, history, summary)
+        msgs = self._build_tool_messages(user_msg, client_id, history, summary, extra_context)
         llm_with_tools = self.llm.bind_tools(tools)
 
         tool_results: Dict[str, Any] = {}

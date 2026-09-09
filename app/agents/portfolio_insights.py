@@ -43,11 +43,19 @@ class PortfolioInsightsAgent(BaseAgent):
         client_id: str,
         history: Optional[List[dict]] = None,
         summary: Optional[str] = None,
+        extra_context: Optional[str] = None,
     ) -> List[BaseMessage]:
-        """Build the initial message list that primes the LLM to call tools."""
+        """Build the initial message list that primes the LLM to call tools.
+
+        ``extra_context`` carries upstream producer output (sequential execution)
+        or a re-fetch instruction (replan loop) and is appended to the context.
+        """
+        additional_context = f"Client ID: {client_id}"
+        if extra_context:
+            additional_context += f"\n\n{extra_context}"
         user_prompt = PORTFOLIO_INSIGHTS_USER_TEMPLATE.format(
             user_message=user_msg + PORTFOLIO_TOOL_COLLECTION_SUFFIX,
-            additional_context=f"Client ID: {client_id}",
+            additional_context=additional_context,
         )
         history_msgs = self._format_history(history or [], summary=summary)
         msgs: List[BaseMessage] = [SystemMessage(content=PORTFOLIO_INSIGHTS_SYSTEM_PROMPT)]
@@ -67,6 +75,7 @@ class PortfolioInsightsAgent(BaseAgent):
         state: AgentState,
         history: Optional[List[dict]] = None,
         summary: Optional[str] = None,
+        extra_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run the portfolio tool-calling loop and return raw results.
 
@@ -79,7 +88,7 @@ class PortfolioInsightsAgent(BaseAgent):
         user_msg = extract_text(messages[-1].content) if messages else ""
         client_id = state.get("metadata", {}).get("client_id") or "unknown"
 
-        msgs = self._build_tool_messages(user_msg, client_id, history, summary)
+        msgs = self._build_tool_messages(user_msg, client_id, history, summary, extra_context)
         llm_with_tools = self.llm.bind_tools(PORTFOLIO_TOOLS)
 
         tool_results: Dict[str, Any] = {}

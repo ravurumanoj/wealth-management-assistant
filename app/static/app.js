@@ -695,6 +695,7 @@
     router:                    { label: "Routing query",       icon: "🔀" },
     portfolio_insights:        { label: "Portfolio Insights",  icon: "📊" },
     relationship_intelligence: { label: "Relationship Intel.", icon: "🤝" },
+    synthesizer:               { label: "Synthesizing",        icon: "🧠" },
     general:                   { label: "Direct response",     icon: "💬" },
     needs_clarification:       { label: "Clarifying query",    icon: "❓" },
     done:                      { label: "Response ready",      icon: "✅" },

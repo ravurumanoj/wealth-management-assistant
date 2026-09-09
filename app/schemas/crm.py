@@ -24,7 +24,8 @@ class CrmSummaryItem(BaseModel):
     pending_followups: int = 0
     pending_suggestions: int = 0
     open_compliance_flags: int = 0
-    alerts: List[Dict[str, Any]] = Field(default_factory=list)
+    # alerts are stored as plain strings in crm.json; accept str or object.
+    alerts: List[Any] = Field(default_factory=list)
 
 
 class CustomerProfileView(BaseModel):
@@ -51,4 +52,5 @@ class AdvisoryView(BaseModel):
     suggestions_provided: List[Dict[str, Any]] = Field(default_factory=list)
     pending_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
     compliance_flags: List[Dict[str, Any]] = Field(default_factory=list)
-    alerts: List[Dict[str, Any]] = Field(default_factory=list)
+    # alerts are stored as plain strings in crm.json; accept str or object.
+    alerts: List[Any] = Field(default_factory=list)

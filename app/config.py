@@ -80,6 +80,28 @@ class Settings(BaseSettings):
     MCP_TIMEOUT: float = 15.0
     MCP_MAX_TOOL_ITERATIONS: int = 5
 
+    # ── Short-term graph state — LangGraph checkpointer (P4.1) ───────────────
+    # When True, the graph persists per-thread state. Uses a Postgres saver when
+    # the langgraph-postgres extra + DB are available, else falls back to memory.
+    GRAPH_CHECKPOINTER_ENABLED: bool = True
+
+    # ── Governance: entitlements, audit, guardrails (Phase 5) ────────────────
+    ENTITLEMENTS_ENABLED: bool = True   # enforce client/portfolio access before retrieval
+    AUDIT_ENABLED: bool = True          # log queries + responses to logs/audit.log
+    GUARDRAILS_ENABLED: bool = True     # input scope, PII redaction, output compliance
+    # PII masking is opt-in: only redact when explicitly set true in .env.
+    PII_MASKING_ENABLED: bool = False
+
+    # ── Long-term episodic memory — Qdrant in-memory (P4.2) ──────────────────
+    # Episodic memory only: per-client recall of past interactions across sessions.
+    LTM_ENABLED: bool = True
+    QDRANT_LOCATION: str = ":memory:"          # in-memory Qdrant (non-persistent)
+    QDRANT_EPISODIC_COLLECTION: str = "episodic_memory"
+    QDRANT_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"  # local fastembed model
+    EPISODIC_TOP_K: int = 3                     # episodes injected per query
+    EPISODIC_MIN_SCORE: float = 0.30            # drop weak matches below this score
+    EPISODIC_SUMMARY_MAX_LEN: int = 400         # chars kept for the episode note
+
     # ── LLM Provider Selection ────────────────────────────────────────────────
     # Active primary provider: "unique_ai" | "gemini" | "openai"
     LLM_PROVIDER: str = "unique_ai"

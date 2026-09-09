@@ -1,0 +1,16 @@
+{
+  "default_all_access": true,
+  "rms": {
+    "RM-DEMO": {
+      "clients": [
+        "CUST-1001",
+        "CUST-1002",
+        "CUST-2002",
+        "CUST-3003",
+        "CUST-4004",
+        "CUST-5005"
+      ],
+      "portfolios": []
+    }
+  }
+}
